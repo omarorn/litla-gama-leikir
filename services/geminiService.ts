@@ -27,7 +27,7 @@ export const getForemanCommentary = async (
   if (!apiKey) return { message: "Vantar API lykil!", mood: 'neutral' };
 
   // Use Flash-Lite for low latency UI updates
-  const modelId = "gemini-2.5-flash-lite-preview-02-05";
+  const modelId = "gemini-flash-lite-latest";
   const context = getContext();
   
   const systemInstruction = `Þú ert verkstjóri hjá 'Litlu Gamaleigunni'. 
@@ -89,13 +89,14 @@ export const editWorkerImage = async (base64Image: string, promptText: string): 
   }
 };
 
-// 3. TRASH SCANNER (Vision - Gemini 3 Pro)
+// 3. TRASH SCANNER (Vision - Gemini 2.5 Flash)
 export const identifyTrashItem = async (base64Image: string): Promise<{ item: string, bin: string, reason: string }> => {
   if (!apiKey) return { item: "Óþekkt", bin: "Almennt", reason: "Engin tenging." };
 
   try {
+    // Switch to gemini-2.5-flash-latest for stable vision support
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", // Best for reasoning about images
+      model: "gemini-2.5-flash-latest", 
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: base64Image } },
@@ -116,7 +117,7 @@ export const identifyTrashItem = async (base64Image: string): Promise<{ item: st
     });
     return JSON.parse(response.text || '{}');
   } catch (e) {
-    console.error(e);
+    console.error("Vision error:", e);
     return { item: "Villa", bin: "Almennt", reason: "Gat ekki greint mynd." };
   }
 };
@@ -127,10 +128,10 @@ export const askForemanComplex = async (question: string): Promise<string> => {
   const context = getContext();
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-3-pro-preview", // Keep 3-pro for complex text reasoning (thinking)
       contents: question,
       config: {
-        thinkingConfig: { thinkingBudget: 32768 }, // MAX THINKING
+        thinkingConfig: { thinkingBudget: 1024 }, // Reduced budget for faster response in this context
         systemInstruction: `Þú ert öryggisstjóri á vinnusvæði. Hugsaðu djúpt um öryggisreglur og umhverfismál áður en þú svarar á íslensku. Taktu tillit til þess að: ${context}`
       }
     });
@@ -146,7 +147,7 @@ export const findPlaces = async (query: string): Promise<{text: string, links: s
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-latest",
       contents: `Find locations in Iceland: ${query}. Svaraðu á íslensku.`,
       config: {
         tools: [{ googleMaps: {} }],
