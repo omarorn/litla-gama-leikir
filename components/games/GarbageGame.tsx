@@ -72,7 +72,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
       audio.playWin();
   };
 
-  const spawnItem = (speedMult: number = 1) => {
+  const spawnItem = (speedMult: number) => {
     const data = TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
     const id = Date.now() + Math.random();
     const x = 50; 

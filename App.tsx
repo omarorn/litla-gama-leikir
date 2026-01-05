@@ -9,7 +9,7 @@ import GearStation from './components/GearStation';
 import TrashScanner from './components/TrashScanner';
 import MapOps from './components/MapOps';
 import GameWheel from './components/GameWheel';
-import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity, Scan, Map as MapIcon, ExternalLink } from 'lucide-react';
+import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity, Scan, Map as MapIcon, ExternalLink, List, Gamepad2 } from 'lucide-react';
 import { audio } from './services/audioService';
 
 export default function App() {
@@ -26,6 +26,18 @@ export default function App() {
   useEffect(() => {
     const saved = localStorage.getItem('lg-highscores');
     if (saved) setHighScores(JSON.parse(saved));
+
+    // Handle URL Params for deep linking (e.g., ?game=HOOK)
+    const params = new URLSearchParams(window.location.search);
+    const gameParam = params.get('game');
+    if (gameParam) {
+        const type = gameParam.toUpperCase() as GameType;
+        if (Object.values(GameType).includes(type) && type !== GameType.NONE) {
+            startGame(type);
+            // Clear URL so back button works nicely
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }
 
     // Time/Season Logic
     const updateTime = () => {
@@ -75,6 +87,17 @@ export default function App() {
   const bgGradient = isNight 
     ? 'bg-slate-950' 
     : isWinter ? 'bg-slate-900' : 'bg-slate-900';
+
+  // Game List for Direct Access
+  const GAME_LIST = [
+      { id: GameType.GARBAGE, name: "Flokkunarvél", icon: "♻️" },
+      { id: GameType.HOOK, name: "Krókabíll", icon: "🚛" },
+      { id: GameType.SNOW, name: "Snjómokstur", icon: "❄️" },
+      { id: GameType.SAND, name: "Gröfuvinna", icon: "🚜" },
+      { id: GameType.SCANNER, name: "AI Skanni", icon: "👁️" },
+      { id: GameType.GEAR, name: "Græjustöð", icon: "⚡" },
+      { id: GameType.MAPS, name: "Kortasjá", icon: "🗺️" },
+  ];
 
   return (
     <div className={`min-h-screen ${bgGradient} text-slate-100 flex flex-col items-center font-sans selection:bg-yellow-500 selection:text-black transition-colors duration-1000 overflow-x-hidden`}>
@@ -129,50 +152,37 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-6xl p-4 md:p-6 flex flex-col items-center justify-center relative z-10">
         
-        {/* LANDING: THE WHEEL */}
+        {/* LANDING: THE WHEEL & LIST */}
         {activeGame === GameType.NONE ? (
-             <div className="w-full h-full flex flex-col items-center animate-fade-in py-10 relative">
+             <div className="w-full flex flex-col items-center animate-fade-in py-10 relative">
                  
                  <h2 className="text-2xl md:text-4xl font-black text-center mb-8 uppercase tracking-widest text-white drop-shadow-xl">
                     Snúðu hjólinu <br/>
                     <span className={`text-base md:text-xl ${accentColor}`}>til að velja verkefni</span>
                  </h2>
 
-                 <div className="relative mb-12">
+                 <div className="relative mb-16">
                     <GameWheel onGameSelected={startGame} isWinter={isWinter} />
                  </div>
 
-                 {/* Hidden Tools around the 'Room' */}
-                 <div className="absolute bottom-0 w-full flex justify-between px-8 text-slate-600">
-                      {/* Left: Scanner */}
-                      <button 
-                        onClick={() => startGame(GameType.SCANNER)} 
-                        className="group flex flex-col items-center gap-2 hover:text-white transition-colors"
-                        title="Scanner Tool"
-                      >
-                          <Scan size={24} className="group-hover:text-yellow-400 transition-colors" />
-                          <span className="text-[10px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">SKANNI</span>
-                      </button>
-
-                      {/* Center: Gear */}
-                      <button 
-                        onClick={() => startGame(GameType.GEAR)} 
-                        className="group flex flex-col items-center gap-2 hover:text-white transition-colors translate-y-4"
-                        title="Gear Station"
-                      >
-                          <Zap size={24} className="group-hover:text-purple-400 transition-colors" />
-                          <span className="text-[10px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">GRÆJUR</span>
-                      </button>
-
-                      {/* Right: Maps */}
-                      <button 
-                        onClick={() => startGame(GameType.MAPS)} 
-                        className="group flex flex-col items-center gap-2 hover:text-white transition-colors"
-                        title="Map Ops"
-                      >
-                          <MapIcon size={24} className="group-hover:text-blue-400 transition-colors" />
-                          <span className="text-[10px] font-mono opacity-0 group-hover:opacity-100 transition-opacity">KORT</span>
-                      </button>
+                 {/* Direct Game List Section */}
+                 <div className="w-full max-w-4xl px-4 mb-20">
+                     <div className="flex items-center gap-2 mb-4 text-slate-400 border-b border-slate-800 pb-2">
+                         <List size={16} />
+                         <span className="text-xs font-mono uppercase tracking-widest">Öll Verkefni (Beinn Aðgangur)</span>
+                     </div>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                         {GAME_LIST.map((game) => (
+                             <button 
+                                key={game.id}
+                                onClick={() => startGame(game.id)}
+                                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 p-4 rounded-xl flex flex-col items-center gap-2 transition-all group"
+                             >
+                                 <span className="text-3xl filter grayscale group-hover:grayscale-0 transition-all">{game.icon}</span>
+                                 <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase text-center">{game.name}</span>
+                             </button>
+                         ))}
+                     </div>
                  </div>
 
              </div>
@@ -222,10 +232,14 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full p-6 text-center z-10">
-         <p className="text-slate-600 text-xs font-mono">
-             © 2025 Litla Gamaleigan. <a href="https://litla.gamaleigan.is" className="hover:text-white">Heimsæktu okkur.</a>
+      <footer className="w-full p-6 text-center z-10 border-t border-slate-800 bg-slate-950/50">
+         <p className="text-slate-600 text-xs font-mono mb-2">
+             © 2025 Litla Gamaleigan. <a href="https://litla.gamaleigan.is" className="hover:text-white underline decoration-slate-600 underline-offset-4">Heimsæktu okkur.</a>
          </p>
+         <div className="flex justify-center gap-4 text-[10px] text-slate-700">
+             <span>V. 4.1.0</span>
+             <span>AI SYSTEM ONLINE</span>
+         </div>
       </footer>
 
       <Foreman gameType={activeGame} score={score} gameState={gameState} />
