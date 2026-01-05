@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { GameType } from '../types';
 import { getForemanCommentary, askForemanComplex } from '../services/geminiService';
-import { HardHat, BrainCircuit, X, MessageSquareOff } from 'lucide-react';
+import { HardHat, BrainCircuit, X, MessageSquareOff, Minimize2 } from 'lucide-react';
 
 interface ForemanProps {
   gameType: GameType;
@@ -14,7 +14,7 @@ const Foreman: React.FC<ForemanProps> = ({ gameType, score, gameState }) => {
   const [loading, setLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [minimizedBubble, setMinimizedBubble] = useState(false); // New state to hide bubble
+  const [minimizedBubble, setMinimizedBubble] = useState(false);
   const [question, setQuestion] = useState("");
 
   useEffect(() => {
@@ -69,9 +69,24 @@ const Foreman: React.FC<ForemanProps> = ({ gameType, score, gameState }) => {
                 <div className={`pointer-events-auto bg-white/95 backdrop-blur-md border-2 ${isThinking ? 'border-purple-500' : 'border-yellow-500'} rounded-2xl p-4 mb-16 md:mb-0 md:mr-4 shadow-[0_0_20px_rgba(0,0,0,0.3)] relative transition-all duration-300 ${loading ? 'opacity-80' : 'opacity-100'}`}>
                     {expanded ? (
                         <div className="w-64 pointer-events-auto">
-                            <div className="flex justify-between mb-2">
+                            <div className="flex justify-between mb-2 border-b border-slate-100 pb-2">
                                 <span className="font-bold text-xs uppercase tracking-wider text-slate-500">Öryggisstjóri AI</span>
-                                <button onClick={() => setExpanded(false)} className="hover:bg-slate-100 rounded p-1"><X size={16}/></button>
+                                <div className="flex gap-1">
+                                    <button 
+                                        onClick={() => { setExpanded(false); setMinimizedBubble(true); }} 
+                                        className="hover:bg-slate-100 rounded p-1 text-slate-400 hover:text-red-500"
+                                        title="Fela alveg"
+                                    >
+                                        <Minimize2 size={16}/>
+                                    </button>
+                                    <button 
+                                        onClick={() => setExpanded(false)} 
+                                        className="hover:bg-slate-100 rounded p-1 text-slate-600"
+                                        title="Loka glugga"
+                                    >
+                                        <X size={16}/>
+                                    </button>
+                                </div>
                             </div>
                             <p className="text-sm font-bold text-slate-800 mb-4 max-h-40 overflow-y-auto">{isThinking ? "Er að hugsa..." : message}</p>
                             <div className="flex gap-1">
@@ -82,13 +97,13 @@ const Foreman: React.FC<ForemanProps> = ({ gameType, score, gameState }) => {
                     ) : (
                         <div className="relative pr-6 pointer-events-auto">
                             <button 
-                                onClick={() => setMinimizedBubble(true)} 
-                                className="absolute -top-2 -right-2 text-slate-400 hover:text-red-500 p-1"
+                                onClick={(e) => { e.stopPropagation(); setMinimizedBubble(true); }} 
+                                className="absolute -top-4 -right-4 bg-white text-slate-400 hover:text-red-500 p-1.5 rounded-full shadow border border-slate-200"
                                 title="Fela skilaboð"
                             >
                                 <X size={14} />
                             </button>
-                            <p className="text-gray-800 font-bold text-xs md:text-sm cursor-pointer" onClick={() => setExpanded(true)}>
+                            <p className="text-gray-800 font-bold text-xs md:text-sm cursor-pointer hover:underline" onClick={() => setExpanded(true)}>
                                 {loading ? "..." : message}
                             </p>
                         </div>

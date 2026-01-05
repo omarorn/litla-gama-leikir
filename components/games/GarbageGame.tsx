@@ -57,7 +57,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const [showReport, setShowReport] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number>(0);
   const scoreRef = useRef(0);
   const [timeLeft, setTimeLeft] = useState(45);
   const startTimeRef = useRef(Date.now());

@@ -9,7 +9,7 @@ import GearStation from './components/GearStation';
 import TrashScanner from './components/TrashScanner';
 import MapOps from './components/MapOps';
 import GameWheel from './components/GameWheel';
-import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity, Scan, Map as MapIcon, ExternalLink, List, Gamepad2 } from 'lucide-react';
+import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity, Scan, Map as MapIcon, ExternalLink, List, Link as LinkIcon, Check } from 'lucide-react';
 import { audio } from './services/audioService';
 
 export default function App() {
@@ -17,6 +17,7 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [highScores, setHighScores] = useState<Record<string, number>>({});
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover' | 'highscore'>('idle');
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   
   // Seasonal & Time State
   const [isNight, setIsNight] = useState(false);
@@ -78,6 +79,14 @@ export default function App() {
     setGameState('idle');
     setScore(0);
     audio.playClick();
+  };
+
+  const copyGameLink = (e: React.MouseEvent, type: GameType) => {
+      e.stopPropagation();
+      const url = `${window.location.origin}${window.location.pathname}?game=${type}`;
+      navigator.clipboard.writeText(url);
+      setCopiedLink(type);
+      setTimeout(() => setCopiedLink(null), 2000);
   };
 
   // Dynamic Theme Colors
@@ -166,21 +175,37 @@ export default function App() {
                  </div>
 
                  {/* Direct Game List Section */}
-                 <div className="w-full max-w-4xl px-4 mb-20">
-                     <div className="flex items-center gap-2 mb-4 text-slate-400 border-b border-slate-800 pb-2">
-                         <List size={16} />
-                         <span className="text-xs font-mono uppercase tracking-widest">Öll Verkefni (Beinn Aðgangur)</span>
+                 <div className="w-full max-w-4xl px-4 mb-20 animate-slide-up">
+                     <div className="flex items-center justify-between mb-6 text-slate-400 border-b border-slate-800 pb-2">
+                         <div className="flex items-center gap-2">
+                             <List size={16} />
+                             <span className="text-xs font-mono uppercase tracking-widest">Öll Verkefni</span>
+                         </div>
+                         <span className="text-[10px] uppercase">Smelltu til að spila • Deildu með hlekk</span>
                      </div>
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                          {GAME_LIST.map((game) => (
-                             <button 
+                             <div 
                                 key={game.id}
-                                onClick={() => startGame(game.id)}
-                                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 p-4 rounded-xl flex flex-col items-center gap-2 transition-all group"
+                                className="relative group"
                              >
-                                 <span className="text-3xl filter grayscale group-hover:grayscale-0 transition-all">{game.icon}</span>
-                                 <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase text-center">{game.name}</span>
-                             </button>
+                                 <button 
+                                    onClick={() => startGame(game.id)}
+                                    className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 p-4 rounded-xl flex flex-col items-center gap-2 transition-all"
+                                 >
+                                     <span className="text-3xl filter grayscale group-hover:grayscale-0 transition-all">{game.icon}</span>
+                                     <span className="text-xs font-bold text-slate-300 group-hover:text-white uppercase text-center">{game.name}</span>
+                                 </button>
+                                 
+                                 {/* Copy Link Button */}
+                                 <button 
+                                    onClick={(e) => copyGameLink(e, game.id)}
+                                    className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-slate-500 hover:text-white hover:bg-blue-600 transition-all opacity-0 group-hover:opacity-100"
+                                    title="Afrita hlekk"
+                                 >
+                                     {copiedLink === game.id ? <Check size={12} className="text-green-400" /> : <LinkIcon size={12} />}
+                                 </button>
+                             </div>
                          ))}
                      </div>
                  </div>
