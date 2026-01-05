@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Snowflake } from 'lucide-react';
 
 interface SnowPlowGameProps {
-  onScore: (points: number) => void;
+  onScore: React.Dispatch<React.SetStateAction<number>>;
   onGameOver: () => void;
 }
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Recycle, Apple, Box, Ban } from 'lucide-react';
+import { Trash2, Recycle, Apple, Box } from 'lucide-react';
+import { audio } from '../../services/audioService';
 
 interface GarbageGameProps {
-  onScore: (points: number) => void;
+  onScore: React.Dispatch<React.SetStateAction<number>>;
   onGameOver: () => void;
 }
 
@@ -61,6 +62,23 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const [timeLeft, setTimeLeft] = useState(45);
   const startTimeRef = useRef(Date.now());
 
+  const handleBinSelect = (type: BinType) => {
+    setActiveBin(type);
+    audio.playClick();
+  };
+
+  const handleGameEnd = () => {
+      setShowReport(true);
+      audio.playWin();
+  };
+
+  const spawnItem = (speedMult: number) => {
+    const data = TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
+    const id = Date.now() + Math.random();
+    const x = 50; 
+    setItems(prev => [...prev, { ...data, id, x, y: 0, speed: (0.4 + Math.random() * 0.4) * speedMult }]);
+  };
+
   useEffect(() => {
     let lastSpawn = 0;
     
@@ -85,10 +103,12 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
              if (item.type === activeBin) {
                scoreRef.current += 10;
                onScore(scoreRef.current);
+               audio.playSuccess();
              } else {
                scoreRef.current = Math.max(0, scoreRef.current - 5);
                onScore(scoreRef.current);
                setMistakes(m => [...m, { item: item.name, wrongBin: activeBin, correctBin: item.type }]);
+               audio.playError();
              }
              return false; 
            }
@@ -127,18 +147,6 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBin, showReport]); 
 
-  const handleGameEnd = () => {
-      setShowReport(true);
-  };
-
-  const spawnItem = (speedMult: number) => {
-    const data = TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
-    const id = Date.now() + Math.random();
-    // Randomize X position slightly for visual variety, but keep reachable
-    const x = 50; 
-    setItems(prev => [...prev, { ...data, id, x, y: 0, speed: (0.4 + Math.random() * 0.4) * speedMult }]);
-  };
-
   const getBinIcon = (type: BinType) => {
     switch (type) {
       case 'almennt': return <Trash2 className="text-gray-200 w-8 h-8" />;
@@ -151,7 +159,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const getBinColor = (type: BinType) => {
       switch (type) {
           case 'almennt': return 'bg-gray-600 border-gray-800';
-          case 'plast': return 'bg-orange-500 border-orange-700'; // Using orange for plastic logic usually implies packaging, though generic Recycle symbol often green. Adjusting to distinct colors.
+          case 'plast': return 'bg-orange-500 border-orange-700'; 
           case 'pappi': return 'bg-blue-600 border-blue-800';
           case 'matur': return 'bg-green-600 border-green-800';
       }
@@ -215,7 +223,6 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
     <div className="relative w-full h-[500px] bg-slate-100 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner" ref={containerRef}>
       <div className="absolute top-4 left-4 font-bold text-2xl text-slate-700 z-10">Tími: {timeLeft}s</div>
       
-      {/* Falling Items */}
       {items.map(item => (
         <div 
           key={item.id} 
@@ -230,25 +237,22 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
               {item.name}
           </div>
           <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center shadow-md text-xl">
-             {/* Simple visual fallback based on type if no specific icon */}
              {item.type === 'matur' ? '🍎' : item.type === 'pappi' ? '📦' : item.type === 'plast' ? '🥤' : '🗑️'}
           </div>
         </div>
       ))}
 
-      {/* Catcher / Bins */}
       <div className="absolute bottom-0 w-full h-32 bg-white border-t-4 border-slate-300 grid grid-cols-4 gap-2 px-2 py-2">
         {(['plast', 'pappi', 'matur', 'almennt'] as BinType[]).map(type => (
           <button
             key={type}
-            onClick={() => setActiveBin(type)}
+            onClick={() => handleBinSelect(type)}
             className={`flex flex-col items-center justify-center rounded-xl border-b-8 transition-all active:border-b-0 active:translate-y-2 relative overflow-hidden ${getBinColor(type)} ${
               activeBin === type 
                 ? 'ring-4 ring-yellow-400 -translate-y-2 shadow-xl' 
                 : 'opacity-90 hover:opacity-100'
             }`}
           >
-            {/* Lid effect */}
             <div className="absolute top-0 w-full h-4 bg-black/10"></div>
             
             <div className="mt-2">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 interface SandGameProps {
-  onScore: (points: number) => void;
+  onScore: React.Dispatch<React.SetStateAction<number>>;
   onGameOver: () => void;
 }
 

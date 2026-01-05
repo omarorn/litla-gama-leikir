@@ -1,165 +1,215 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameType } from './types';
 import Foreman from './components/Foreman';
 import GarbageGame from './components/games/GarbageGame';
 import HookGame from './components/games/HookGame';
 import SnowPlowGame from './components/games/SnowPlowGame';
 import SandGame from './components/games/SandGame';
-import { Truck, Shovel, Trash2, Snowflake, Play, ArrowLeft } from 'lucide-react';
+import GearStation from './components/GearStation';
+import TrashScanner from './components/TrashScanner';
+import MapOps from './components/MapOps';
+import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity } from 'lucide-react';
+import { audio } from './services/audioService';
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<GameType>(GameType.NONE);
+  const [activeGame, setActiveGame] = useState<GameType>(GameType.NONE); // NONE now renders Scanner
   const [score, setScore] = useState(0);
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
+  const [highScores, setHighScores] = useState<Record<string, number>>({});
+  const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover' | 'highscore'>('idle');
+  
+  // Seasonal & Time State
+  const [isNight, setIsNight] = useState(false);
+  const [isWinter, setIsWinter] = useState(false);
+  const [timeString, setTimeString] = useState("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem('lg-highscores');
+    if (saved) setHighScores(JSON.parse(saved));
+
+    // Time/Season Logic
+    const updateTime = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const month = now.getMonth(); // 0-11
+      
+      setIsNight(hour < 7 || hour >= 20);
+      setIsWinter(month >= 9 || month <= 3); // Oct - April
+      setTimeString(now.toLocaleTimeString('is-IS', { hour: '2-digit', minute: '2-digit' }));
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const startGame = (type: GameType) => {
     setActiveGame(type);
     setScore(0);
     setGameState('playing');
+    audio.playClick();
   };
 
   const handleGameOver = () => {
+    const currentHigh = highScores[activeGame] || 0;
+    if (score > currentHigh) {
+        const newHighScores = { ...highScores, [activeGame]: score };
+        setHighScores(newHighScores);
+        localStorage.setItem('lg-highscores', JSON.stringify(newHighScores));
+    }
     setGameState('gameover');
   };
 
   const handleBackToMenu = () => {
-    setActiveGame(GameType.NONE);
+    setActiveGame(GameType.NONE); // Goes back to Scanner
     setGameState('idle');
     setScore(0);
+    audio.playClick();
   };
 
-  const renderGame = () => {
-    const props = {
-      onScore: setScore,
-      onGameOver: handleGameOver
-    };
-
-    switch (activeGame) {
-      case GameType.GARBAGE: return <GarbageGame {...props} />;
-      case GameType.HOOK: return <HookGame {...props} />;
-      case GameType.SNOW: return <SnowPlowGame {...props} />;
-      case GameType.SAND: return <SandGame {...props} />;
-      default: return null;
-    }
-  };
+  // Dynamic Theme Colors
+  const accentColor = isWinter ? 'text-cyan-400' : 'text-yellow-500';
+  const borderColor = isWinter ? 'border-cyan-500' : 'border-yellow-500';
+  const glowShadow = isWinter ? 'shadow-[0_0_20px_rgba(34,211,238,0.2)]' : 'shadow-[0_0_20px_rgba(234,179,8,0.2)]';
+  const bgGradient = isNight 
+    ? 'bg-slate-950' 
+    : isWinter ? 'bg-slate-900' : 'bg-slate-900';
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center">
+    <div className={`min-h-screen ${bgGradient} text-slate-100 flex flex-col items-center font-sans selection:bg-yellow-500 selection:text-black transition-colors duration-1000`}>
+      
+      {/* EASTER EGG: MapOps triggered by background click (rare) */}
+      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+
       {/* Header */}
-      <header className="w-full bg-yellow-400 p-4 border-b-8 border-black construction-pattern shadow-lg z-10">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="bg-white px-4 py-2 rounded-lg border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-             <h1 className="text-xl md:text-3xl font-extrabold text-black uppercase tracking-tighter leading-none">
-               Litla Gamaleigan
-               <span className="block text-sm md:text-lg text-yellow-600 font-bold">Leikjasvæði</span>
-             </h1>
+      <header className={`w-full bg-slate-950/80 border-b ${isNight ? 'border-slate-800' : borderColor} p-4 sticky top-0 z-20 shadow-2xl backdrop-blur-md transition-colors duration-500`}>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          
+          {/* EASTER EGG 1: Hook Game -> Click the Icon */}
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => startGame(GameType.HOOK)}>
+             <div className={`${isWinter ? 'bg-cyan-600' : 'bg-yellow-500'} p-2 rounded-sm skew-x-[-10deg] group-hover:scale-110 transition-transform`}>
+                 <Grip className="text-black skew-x-[10deg]" />
+             </div>
+             <div>
+                 <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest leading-none text-white group-hover:text-slate-300 transition-colors">
+                   Litla Gamaleigan
+                 </h1>
+                 <span className={`text-[10px] md:text-xs ${accentColor} font-mono tracking-[0.3em]`}>
+                     {isWinter ? 'VETRARÞJÓNUSTA' : 'STJÓRNSTÖÐ'} // {new Date().getFullYear()}
+                 </span>
+             </div>
           </div>
-          {activeGame !== GameType.NONE && (
-            <div className="bg-black text-yellow-400 px-4 py-2 rounded-full font-mono text-lg md:text-xl font-bold border-2 border-white">
-              STIG: {score}
-            </div>
-          )}
+          
+          <div className="flex items-center gap-4">
+              {/* EASTER EGG 2: Snow Plow -> Click the Weather Widget */}
+              <div 
+                onClick={() => startGame(GameType.SNOW)}
+                className={`hidden md:flex items-center gap-2 px-4 py-1 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:bg-slate-800 ${isWinter ? 'hover:border-cyan-500' : 'hover:border-yellow-500'} transition-all`}
+              >
+                  {isWinter ? <ThermometerSnowflake size={16} className="text-cyan-400" /> : <Sun size={16} className="text-yellow-500" />}
+                  <span className="font-mono text-xs text-slate-400">{timeString}</span>
+                  {isNight && <Moon size={12} className="text-purple-400 ml-1" />}
+              </div>
+
+              {gameState === 'playing' && (
+                <div className={`bg-slate-800 px-6 py-2 rounded border ${borderColor} ${glowShadow}`}>
+                  <span className={`${accentColor} font-mono text-xl font-bold`}>STIG: {score.toString().padStart(4, '0')}</span>
+                </div>
+              )}
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-4xl p-4 md:p-8 flex flex-col items-center justify-center">
+      <main className="flex-1 w-full max-w-6xl p-4 md:p-6 flex flex-col items-center justify-center relative z-10">
         
+        {/* Main View: Trash Scanner (Default) */}
         {activeGame === GameType.NONE ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full animate-fade-in">
-            <GameCard 
-              title="Flokkunarleikur" 
-              icon={<Trash2 size={48} />} 
-              color="bg-green-100 border-green-500"
-              onClick={() => startGame(GameType.GARBAGE)} 
-              description="Flokkaðu ruslið í réttar tunnur! G-Mjólk í pappi, dósir í plast..."
-            />
-            <GameCard 
-              title="Krókabíll" 
-              icon={<Truck size={48} />} 
-              color="bg-sky-100 border-sky-500"
-              onClick={() => startGame(GameType.HOOK)} 
-              description="Keyrðu vörubílinn og náðu í gámana með króknum."
-            />
-            <GameCard 
-              title="Snjómokstur" 
-              icon={<Snowflake size={48} />} 
-              color="bg-blue-50 border-blue-400"
-              onClick={() => startGame(GameType.SNOW)} 
-              description="Hreinsaðu göturnar af snjó áður en tíminn rennur út!"
-            />
-            <GameCard 
-              title="Sandmokstur" 
-              icon={<Shovel size={48} />} 
-              color="bg-amber-100 border-amber-600"
-              onClick={() => startGame(GameType.SAND)} 
-              description="Stjórnaðu gröfunni og fylltu gáminn af sandi."
-            />
-          </div>
+             <div className="w-full h-full flex flex-col items-center animate-fade-in">
+                 <div className="w-full max-w-4xl relative">
+                    {/* Scanner Component as Hero */}
+                    <TrashScanner 
+                        onBack={() => {}} // No back button needed on home
+                        isWinter={isWinter}
+                        onSystemDiagnostics={() => startGame(GameType.GARBAGE)} // EASTER EGG 3 link
+                    />
+
+                    {/* Quick Link to Gear Station (Not hidden, just secondary) */}
+                    <div className="absolute -bottom-16 right-0">
+                        <button 
+                            onClick={() => setActiveGame(GameType.GEAR)}
+                            className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest"
+                        >
+                            <Zap size={14} /> Græjustöðin
+                        </button>
+                    </div>
+
+                    {/* EASTER EGG 4: Map Ops via coordinates text */}
+                    <div className="absolute -bottom-16 left-0">
+                         <button 
+                            onClick={() => setActiveGame(GameType.MAPS)}
+                            className="flex items-center gap-2 text-slate-600 hover:text-cyan-400 transition-colors text-[10px] font-mono"
+                        >
+                            GPS: 64.1466° N, 21.9426° W
+                        </button>
+                    </div>
+                 </div>
+             </div>
         ) : (
-          <div className="w-full max-w-2xl animate-scale-in">
-            <div className="flex justify-between items-center mb-4">
-               <button 
-                 onClick={handleBackToMenu}
-                 className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-bold border-b-4 border-slate-400 active:border-b-0 active:translate-y-1 transition-all"
-               >
-                 <ArrowLeft size={20} /> Valmynd
-               </button>
-               <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase hidden md:block">
-                   {activeGame === GameType.GARBAGE && "Flokkun"}
-                   {activeGame === GameType.HOOK && "Krókabíll"}
-                   {activeGame === GameType.SNOW && "Snjómokstur"}
-                   {activeGame === GameType.SAND && "Gröfuvinna"}
-               </h2>
-            </div>
-            
-            {gameState === 'gameover' ? (
-              <div className="bg-white p-8 rounded-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] text-center">
-                <h2 className="text-4xl font-black text-red-500 mb-4">VERKI LOKIÐ!</h2>
-                <p className="text-2xl font-bold mb-8">Lokastig: {score}</p>
-                <div className="flex flex-col md:flex-row justify-center gap-4">
-                  <button onClick={() => startGame(activeGame)} className="px-8 py-3 bg-yellow-400 text-black font-bold text-xl rounded-lg border-4 border-black hover:scale-105 transition-transform flex items-center justify-center gap-2">
-                    <Play size={24} fill="black" /> Spila aftur
-                  </button>
-                  <button onClick={handleBackToMenu} className="px-8 py-3 bg-slate-200 text-slate-700 font-bold text-xl rounded-lg border-4 border-slate-400 hover:bg-slate-300 transition-colors">
-                    Aftur í valmynd
-                  </button>
+          <div className="w-full max-w-3xl z-10 animate-scale-in">
+             {/* Game Overlay */}
+             <div className="bg-slate-800/90 backdrop-blur-xl border border-slate-700 rounded-xl p-1 mb-6 shadow-2xl">
+                <div className="bg-slate-950 rounded-lg p-4 flex justify-between items-center mb-1">
+                     <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs tracking-widest transition-colors">
+                         <ArrowLeft size={16} /> Loka Kerfi
+                     </button>
+                     <span className={`${accentColor} font-mono text-xs animate-pulse`}>
+                         <Activity size={12} className="inline mr-1" />
+                         VIRKT
+                     </span>
                 </div>
-              </div>
-            ) : (
-              renderGame()
-            )}
+                
+                {activeGame === GameType.GARBAGE && <GarbageGame onScore={setScore} onGameOver={handleGameOver} />}
+                {activeGame === GameType.HOOK && <HookGame onScore={setScore} onGameOver={handleGameOver} />}
+                {activeGame === GameType.SNOW && <SnowPlowGame onScore={setScore} onGameOver={handleGameOver} />}
+                {activeGame === GameType.SAND && <SandGame onScore={setScore} onGameOver={handleGameOver} />}
+                
+                {/* AI Tool Views */}
+                {activeGame === GameType.GEAR && <GearStation onBack={handleBackToMenu} />}
+                {activeGame === GameType.MAPS && <MapOps onBack={handleBackToMenu} />}
+             </div>
+
+             {gameState === 'gameover' && !['GEAR', 'MAPS', 'SCANNER'].includes(activeGame) && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-50 animate-fade-in rounded-xl">
+                     <div className={`bg-slate-900 border-2 ${borderColor} p-8 rounded-2xl text-center max-w-sm ${glowShadow}`}>
+                        <h2 className="text-4xl font-black text-white italic uppercase mb-2">Verki Lokið</h2>
+                        <div className={`${accentColor} font-mono text-3xl font-bold mb-6`}>{score.toString().padStart(4, '0')} PTS</div>
+                        <div className="flex gap-4 justify-center">
+                            <button onClick={() => startGame(activeGame)} className={`${isWinter ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-yellow-500 hover:bg-yellow-400'} text-black px-6 py-3 rounded font-bold flex items-center gap-2`}>
+                                <Play size={20} fill="black" /> Aftur
+                            </button>
+                            <button onClick={handleBackToMenu} className="bg-slate-700 text-white px-6 py-3 rounded font-bold hover:bg-slate-600">
+                                Loka
+                            </button>
+                        </div>
+                     </div>
+                 </div>
+             )}
           </div>
         )}
-
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-slate-800 text-slate-400 p-4 text-center text-sm">
-        <p>© 2024 Litla Gamaleigan Leikjasvæði. Við byggjum framtíðina!</p>
+      <footer className="w-full p-6 text-center z-10">
+         {/* EASTER EGG 5: Sand Game -> Click copyright */}
+         <p 
+            onClick={() => startGame(GameType.SAND)}
+            className="text-slate-600 text-xs font-mono cursor-default hover:text-amber-600 transition-colors inline-block"
+         >
+             © 2025 Litla Gamaleigan. Við byggjum framtíðina.
+         </p>
       </footer>
 
-      {/* Foreman AI Helper */}
       <Foreman gameType={activeGame} score={score} gameState={gameState} />
     </div>
   );
 }
-
-// Subcomponent for Menu Cards
-const GameCard = ({ title, icon, color, onClick, description }: { title: string, icon: React.ReactNode, color: string, onClick: () => void, description: string }) => (
-  <button 
-    onClick={onClick}
-    className={`relative group p-6 rounded-2xl border-4 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 text-left ${color}`}
-  >
-    <div className="flex justify-between items-start mb-4">
-       <div className="p-3 bg-white rounded-xl border-2 border-black/10 group-hover:scale-110 transition-transform duration-300">
-         {icon}
-       </div>
-       <div className="bg-black/10 p-2 rounded-full">
-         <Play size={20} className="opacity-50 group-hover:opacity-100" />
-       </div>
-    </div>
-    <h3 className="text-2xl font-extrabold text-slate-800 mb-2">{title}</h3>
-    <p className="text-slate-600 font-medium leading-tight">{description}</p>
-  </button>
-);

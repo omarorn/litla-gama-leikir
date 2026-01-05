@@ -3,7 +3,10 @@ export enum GameType {
   GARBAGE = 'GARBAGE',
   HOOK = 'HOOK',
   SNOW = 'SNOW',
-  SAND = 'SAND'
+  SAND = 'SAND',
+  SCANNER = 'SCANNER', // New: Vision
+  GEAR = 'GEAR',       // New: Image Editing
+  MAPS = 'MAPS'        // New: Maps Grounding
 }
 
 export interface ScoreState {
@@ -12,7 +15,7 @@ export interface ScoreState {
   highScore: number;
 }
 
-export type ForemanMood = 'happy' | 'neutral' | 'excited';
+export type ForemanMood = 'happy' | 'neutral' | 'excited' | 'thinking';
 
 export interface ForemanResponse {
   message: string;

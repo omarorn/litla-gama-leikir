@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Truck } from 'lucide-react';
 
 interface HookGameProps {
-  onScore: (points: number) => void;
+  onScore: React.Dispatch<React.SetStateAction<number>>;
   onGameOver: () => void;
 }
 
