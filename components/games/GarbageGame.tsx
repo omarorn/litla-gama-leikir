@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Recycle, Apple, Box, Star, MousePointer2 } from 'lucide-react';
+import { Trash2, Recycle, Apple, Box, Star, MousePointer2, Keyboard, Check } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface GarbageGameProps {
@@ -28,7 +29,7 @@ interface Mistake {
   correctBin: BinType;
 }
 
-// Using Placehold.co with specific brand colors to simulate real Icelandic products
+// More items added for variety
 const TRASH_ITEMS: ItemData[] = [
     // Pappi
     { name: 'G-Mjólk', type: 'pappi', image: 'https://placehold.co/100x100/0054a6/ffffff?text=G-Mjólk' },
@@ -36,6 +37,8 @@ const TRASH_ITEMS: ItemData[] = [
     { name: 'Pizzakassi', type: 'pappi', image: 'https://placehold.co/100x100/854d0e/ffffff?text=Pizza' },
     { name: 'Morgunkorn', type: 'pappi', image: 'https://placehold.co/100x100/d97706/ffffff?text=Cheerios' },
     { name: 'Eggjabakki', type: 'pappi', image: 'https://placehold.co/100x100/a8a29e/ffffff?text=Egg' },
+    { name: 'Safi Ferna', type: 'pappi', image: 'https://placehold.co/100x100/f97316/ffffff?text=Safi' },
+    { name: 'Kex pakki', type: 'pappi', image: 'https://placehold.co/100x100/be123c/ffffff?text=Kex' },
     
     // Plast
     { name: 'SS Pylsur', type: 'plast', image: 'https://placehold.co/100x100/1e3a8a/facc15?text=SS+Pylsur' },
@@ -43,6 +46,8 @@ const TRASH_ITEMS: ItemData[] = [
     { name: 'Nóa Kropp', type: 'plast', image: 'https://placehold.co/100x100/facc15/713f12?text=Kropp' },
     { name: 'Brauðpoki', type: 'plast', image: 'https://placehold.co/100x100/ef4444/ffffff?text=Bónus' },
     { name: 'Hakkbakki', type: 'plast', image: 'https://placehold.co/100x100/000000/ffffff?text=Kjöt' },
+    { name: 'Sjampóbrúsi', type: 'plast', image: 'https://placehold.co/100x100/8b5cf6/ffffff?text=Sjampó' },
+    { name: 'Gosflaska', type: 'plast', image: 'https://placehold.co/100x100/dc2626/ffffff?text=Coke' },
     
     // Matur
     { name: 'Bananahýði', type: 'matur', image: 'https://placehold.co/100x100/fde047/000000?text=Banana' },
@@ -50,6 +55,7 @@ const TRASH_ITEMS: ItemData[] = [
     { name: 'Kaffikorgur', type: 'matur', image: 'https://placehold.co/100x100/451a03/ffffff?text=Kaffi' },
     { name: 'Eggjaskurn', type: 'matur', image: 'https://placehold.co/100x100/fff7ed/000000?text=Skurn' },
     { name: 'Fiskbein', type: 'matur', image: 'https://placehold.co/100x100/94a3b8/ffffff?text=Bein' },
+    { name: 'Myglað Brauð', type: 'matur', image: 'https://placehold.co/100x100/065f46/ffffff?text=Brauð' },
     
     // Almennt
     { name: 'Bleyja', type: 'almennt', image: 'https://placehold.co/100x100/ec4899/ffffff?text=Bleyja' },
@@ -57,6 +63,7 @@ const TRASH_ITEMS: ItemData[] = [
     { name: 'Tyggjó', type: 'almennt', image: 'https://placehold.co/100x100/f472b6/ffffff?text=Tyggjó' },
     { name: 'Ryksugupoki', type: 'almennt', image: 'https://placehold.co/100x100/64748b/ffffff?text=Ryk' },
     { name: 'Blautklútar', type: 'almennt', image: 'https://placehold.co/100x100/38bdf8/ffffff?text=Klútar' },
+    { name: 'Eyrnapinni', type: 'almennt', image: 'https://placehold.co/100x100/f1f5f9/000000?text=Pinni' },
 ];
 
 const SHIFTS = [
@@ -76,6 +83,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const [level, setLevel] = useState(0);
   const [shiftProgress, setShiftProgress] = useState(0);
   const [combo, setCombo] = useState(0);
+  const [showInstructions, setShowInstructions] = useState(true);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>(0);
@@ -90,16 +98,27 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
     audio.playClick();
   };
 
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === '1') handleBinSelect('plast');
+        if (e.key === '2') handleBinSelect('pappi');
+        if (e.key === '3') handleBinSelect('matur');
+        if (e.key === '4') handleBinSelect('almennt');
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const spawnItem = (speedMult: number) => {
     const data = TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
     const id = Date.now() + Math.random();
-    // Items always spawn center
     setItems(prev => [...prev, { 
         ...data, 
         id, 
         x: 50, 
         y: 0, 
-        speed: (0.3 + Math.random() * 0.3) * speedMult 
+        speed: (0.3 + Math.random() * 0.2) * speedMult 
     }]);
   };
 
@@ -113,20 +132,21 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
               setItems([]); // Clear screen
               setShowLevelMsg(true);
               setTimeout(() => setShowLevelMsg(false), 2000);
-          } else {
-              // Endless mode on last level
           }
       }
   }, [shiftProgress, currentShift.quota, level]);
 
   useEffect(() => {
+    if (showInstructions) {
+        setTimeout(() => setShowInstructions(false), 3000);
+    }
+    
     let lastSpawn = 0;
     
     const animate = (time: number) => {
       const elapsed = Date.now() - startTimeRef.current;
       
-      // Spawn Rate logic based on Level
-      const baseSpawnRate = Math.max(500, 1500 - (level * 350)); 
+      const baseSpawnRate = Math.max(600, 1500 - (level * 300)); 
       const speedMultiplier = currentShift.speedMod + (elapsed / 60000);
 
       if (time - lastSpawn > baseSpawnRate) {
@@ -147,15 +167,15 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                scoreRef.current += points;
                onScore(scoreRef.current);
                setShiftProgress(p => p + 1);
-               setCombo(c => Math.min(10, c + 1)); // Cap combo
-               audio.playTrashCorrect(); // NEW CUSTOM SOUND
+               setCombo(c => Math.min(10, c + 1));
+               audio.playTrashCorrect();
              } else {
                // FAIL
                scoreRef.current = Math.max(0, scoreRef.current - 5);
                onScore(scoreRef.current);
                setMistakes(m => [...m, { item: item.name, wrongBin: activeBin, correctBin: item.type }]);
-               setCombo(0); // Reset combo
-               audio.playTrashWrong(); // NEW CUSTOM SOUND
+               setCombo(0);
+               audio.playTrashWrong();
              }
              return false; 
            }
@@ -175,14 +195,14 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [activeBin, showReport, currentShift, level, combo, showLevelMsg, onScore]); 
+  }, [activeBin, showReport, currentShift, level, combo, showLevelMsg, onScore, showInstructions]); 
 
   // Game Timer (Global)
   useEffect(() => {
       const timeout = setTimeout(() => {
           setShowReport(true);
           audio.playWin();
-      }, 60000); // 1 minute fixed game loop
+      }, 60000); 
       return () => clearTimeout(timeout);
   }, []);
 
@@ -206,10 +226,10 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
 
   const getBinLabel = (type: BinType) => {
       switch (type) {
-          case 'almennt': return 'Almennt';
-          case 'plast': return 'Plast';
-          case 'pappi': return 'Pappi';
-          case 'matur': return 'Matur';
+          case 'almennt': return 'Almennt (4)';
+          case 'plast': return 'Plast (1)';
+          case 'pappi': return 'Pappi (2)';
+          case 'matur': return 'Matur (3)';
       }
   };
 
@@ -238,8 +258,8 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                                 {mistakes.map((m, i) => (
                                     <tr key={i} className="border-b border-slate-200 text-sm">
                                         <td className="p-2 font-bold">{m.item}</td>
-                                        <td className="p-2 text-red-500 line-through">{getBinLabel(m.wrongBin)}</td>
-                                        <td className="p-2 text-green-600 font-bold">{getBinLabel(m.correctBin)}</td>
+                                        <td className="p-2 text-red-500 line-through">{getBinLabel(m.wrongBin).split(' ')[0]}</td>
+                                        <td className="p-2 text-green-600 font-bold">{getBinLabel(m.correctBin).split(' ')[0]}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -251,7 +271,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                 onClick={onGameOver} 
                 className="mt-auto bg-yellow-400 text-black font-bold text-xl px-8 py-3 rounded-full border-4 border-black hover:scale-105 transition-transform"
               >
-                  Loka Vakt
+                  Áfram í lokatölur
               </button>
           </div>
       );
@@ -282,6 +302,23 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           </div>
       </div>
       
+      {/* Instructions Overlay (Temporary) */}
+      {showInstructions && (
+         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none animate-fade-out-delay">
+             <div className="bg-white p-6 rounded-xl text-center border-4 border-yellow-400 transform -rotate-2">
+                 <Keyboard size={48} className="mx-auto text-slate-700 mb-2" />
+                 <h2 className="text-2xl font-black uppercase mb-1">Notaðu hnappa!</h2>
+                 <div className="flex gap-4 justify-center font-mono font-bold text-xl">
+                     <span className="text-orange-500">1</span>
+                     <span className="text-blue-500">2</span>
+                     <span className="text-green-500">3</span>
+                     <span className="text-gray-500">4</span>
+                 </div>
+                 <p className="text-xs font-bold text-slate-400 mt-2">eða smelltu á tunnurnar</p>
+             </div>
+         </div>
+      )}
+
       {/* Level Up Flash */}
       {showLevelMsg && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
@@ -298,7 +335,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           <div className="w-full h-full bg-[repeating-linear-gradient(0deg,transparent,transparent_19px,#00000010_20px)] animate-scroll"></div>
       </div>
       
-      {/* Falling Items - NOW WITH IMAGES */}
+      {/* Falling Items */}
       {items.map(item => (
         <div 
           key={item.id} 
@@ -312,7 +349,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           <div className="bg-white px-2 py-0.5 rounded shadow-sm text-[9px] font-bold border border-gray-200 whitespace-nowrap mb-1 opacity-80">
               {item.name}
           </div>
-          <div className="w-16 h-16 rounded-lg flex items-center justify-center filter drop-shadow-lg transform hover:scale-110 transition-transform">
+          <div className="w-16 h-16 rounded-lg flex items-center justify-center filter drop-shadow-lg transform hover:scale-110 transition-transform bg-white/50 p-1 backdrop-blur-sm">
              <img src={item.image} alt={item.name} className="w-full h-full object-contain rounded-md" />
           </div>
         </div>
@@ -323,7 +360,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
 
       {/* Bins */}
       <div className="absolute bottom-0 w-full h-32 bg-white border-t-4 border-slate-300 grid grid-cols-4 gap-2 px-2 py-2 z-20">
-        {(['plast', 'pappi', 'matur', 'almennt'] as BinType[]).map(type => (
+        {(['plast', 'pappi', 'matur', 'almennt'] as BinType[]).map((type, idx) => (
           <button
             key={type}
             onClick={() => handleBinSelect(type)}
@@ -333,28 +370,30 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                 : 'opacity-90 hover:opacity-100 grayscale-[0.3] hover:grayscale-0'
             }`}
           >
-            <div className="absolute top-0 w-full h-4 bg-black/10"></div>
-            <div className="mt-2 scale-110">
+            {/* Visual Color Strip at Top */}
+            <div className={`absolute top-0 w-full h-2 ${
+                type === 'plast' ? 'bg-orange-300' : 
+                type === 'pappi' ? 'bg-blue-300' : 
+                type === 'matur' ? 'bg-green-300' : 'bg-gray-400'
+            }`}></div>
+            
+            <div className="absolute top-2 right-2 font-mono text-xs text-white/50 font-bold hidden md:block">{idx + 1}</div>
+
+            <div className="mt-2 scale-110 drop-shadow-lg">
                  {getBinIcon(type)}
             </div>
             <span className="uppercase text-[10px] md:text-xs font-black text-white mt-1 tracking-tighter shadow-black drop-shadow-md">
-                {getBinLabel(type)}
+                {getBinLabel(type).split(' ')[0]}
             </span>
             {activeBin === type && (
-                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                <div className="absolute inset-0 bg-white/20 animate-pulse">
+                    <Check className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" size={48} />
+                </div>
             )}
           </button>
         ))}
       </div>
       
-      {/* Instructions Overlay */}
-      <div className="absolute top-24 right-4 bg-white/80 backdrop-blur p-2 rounded-lg border border-slate-200 shadow-lg pointer-events-none opacity-50 z-0">
-           <div className="flex flex-col items-center text-xs text-slate-500 font-bold uppercase">
-               <MousePointer2 size={16} className="mb-1" />
-               <span>Smelltu</span>
-           </div>
-      </div>
-
     </div>
   );
 };

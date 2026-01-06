@@ -10,8 +10,9 @@ import GearStation from './components/GearStation';
 import TrashScanner from './components/TrashScanner';
 import MapOps from './components/MapOps';
 import AIAssistant from './components/AIAssistant';
+import HighScoreCamera from './components/HighScoreCamera';
 import GameWheel from './components/GameWheel';
-import { Play, ArrowLeft, Grip, ThermometerSnowflake, Sun, Moon, Zap, Activity, Scan, Map as MapIcon, ExternalLink, List, Link as LinkIcon, Check, Sparkles } from 'lucide-react';
+import { Play, ArrowLeft, Grip, ExternalLink } from 'lucide-react';
 import { audio } from './services/audioService';
 
 export enum ExtendedGameType {
@@ -23,11 +24,9 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [highScores, setHighScores] = useState<Record<string, number>>({});
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover' | 'highscore'>('idle');
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   
   const [isNight, setIsNight] = useState(false);
   const [isWinter, setIsWinter] = useState(false);
-  const [timeString, setTimeString] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem('lg-highscores');
@@ -37,12 +36,9 @@ export default function App() {
       const now = new Date();
       setIsNight(now.getHours() < 7 || now.getHours() >= 20);
       setIsWinter(now.getMonth() >= 9 || now.getMonth() <= 3);
-      setTimeString(now.toLocaleTimeString('is-IS', { hour: '2-digit', minute: '2-digit' }));
     };
 
     updateTime();
-    const interval = setInterval(updateTime, 60000);
-    return () => clearInterval(interval);
   }, []);
 
   const startGame = (type: GameType | ExtendedGameType) => {
@@ -59,9 +55,18 @@ export default function App() {
             const newHighScores = { ...highScores, [activeGame as string]: score };
             setHighScores(newHighScores);
             localStorage.setItem('lg-highscores', JSON.stringify(newHighScores));
+            
+            // Trigger High Score Camera Flow
+            setGameState('highscore');
+            audio.playWin();
+            return;
         }
     }
     setGameState('gameover');
+  };
+
+  const handleHighScoreComplete = () => {
+      setGameState('gameover');
   };
 
   const handleBackToMenu = () => {
@@ -144,6 +149,12 @@ export default function App() {
                 {activeGame === GameType.GEAR && <GearStation onBack={handleBackToMenu} />}
                 {activeGame === GameType.MAPS && <MapOps onBack={handleBackToMenu} />}
                 {activeGame === ExtendedGameType.ASSISTANT && <AIAssistant onBack={handleBackToMenu} />}
+
+             {gameState === 'highscore' && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md z-50 rounded-xl">
+                     <HighScoreCamera onComplete={handleHighScoreComplete} />
+                 </div>
+             )}
 
              {gameState === 'gameover' && !['SCANNER', 'GEAR', 'MAPS', 'ASSISTANT'].includes(activeGame as string) && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 rounded-xl">

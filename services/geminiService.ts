@@ -168,6 +168,7 @@ export const transcribeAudioFromBase64 = async (base64Audio: string): Promise<st
     }
 };
 
+// 7. IMAGE EDITING (Gemini 2.5 Flash Image - Standard for Editing)
 export const editWorkerImage = async (base64Image: string, promptText: string): Promise<string | null> => {
   if (!apiKey) return null;
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -189,6 +190,7 @@ export const editWorkerImage = async (base64Image: string, promptText: string): 
   } catch (e) { return null; }
 };
 
+// 8. MAPS GROUNDING (Gemini 2.5 Flash - Maps only supported here)
 export const findPlaces = async (query: string): Promise<{text: string, links: string[]}> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
@@ -206,7 +208,7 @@ export const findPlaces = async (query: string): Promise<{text: string, links: s
   } catch (e) { return { text: "Villa.", links: [] }; }
 };
 
-// 7. COMPLEX QUESTION (Gemini 3 Pro)
+// 9. COMPLEX QUESTION (Gemini 3 Pro)
 export const askForemanComplex = async (question: string): Promise<string> => {
     if (!apiKey) return "Vantar API lykil.";
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -225,7 +227,7 @@ export const askForemanComplex = async (question: string): Promise<string> => {
     }
 };
 
-// 8. BANANA REWARD (Gemini 2.5 Flash Image)
+// 10. BANANA REWARD (Gemini 2.5 Flash Image)
 export const generateBananaReward = async (base64Image: string): Promise<string | null> => {
     if (!apiKey) return null;
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -235,7 +237,7 @@ export const generateBananaReward = async (base64Image: string): Promise<string 
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-                    { text: "Transform this person into a funny yellow banana character wearing a construction helmet. High quality." }
+                    { text: "Transform the person in this image into a hilarious yellow banana-human hybrid character wearing a high-vis construction vest and helmet. Keep the facial expression. Make it fun and cartoony." }
                 ]
             }
         });
