@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+
+import React, { useRef, useState, useEffect } from 'react';
 import { Camera, RefreshCw, Banana } from 'lucide-react';
 import { generateBananaReward } from '../services/geminiService';
 
@@ -9,23 +10,33 @@ interface HighScoreCameraProps {
 const HighScoreCamera: React.FC<HighScoreCameraProps> = ({ onComplete }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [streamActive, setStreamActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [bananaPhoto, setBananaPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setStreamActive(true);
-      }
+      const s = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(s);
     } catch (err) {
       console.error("Camera error:", err);
       alert("Gat ekki opnað myndavél. Vinsamlegast leyfðu aðgang.");
     }
   };
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(console.error);
+    }
+  }, [stream]);
+
+  useEffect(() => {
+    return () => {
+        stream?.getTracks().forEach(track => track.stop());
+    };
+  }, [stream]);
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -39,9 +50,8 @@ const HighScoreCamera: React.FC<HighScoreCameraProps> = ({ onComplete }) => {
         setPhoto(dataUrl);
         
         // Stop stream
-        const stream = videoRef.current.srcObject as MediaStream;
         stream?.getTracks().forEach(track => track.stop());
-        setStreamActive(false);
+        setStream(null);
 
         // Process Banana
         processBanana(dataUrl.split(',')[1]);
@@ -65,7 +75,7 @@ const HighScoreCamera: React.FC<HighScoreCameraProps> = ({ onComplete }) => {
        {!photo ? (
          <div className="flex flex-col items-center">
              <div className="relative w-full h-64 bg-slate-200 rounded-lg overflow-hidden border-2 border-slate-400 mb-4 flex items-center justify-center">
-                {streamActive ? (
+                {stream ? (
                     <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]" />
                 ) : (
                     <button onClick={startCamera} className="flex flex-col items-center text-slate-500 hover:text-slate-700">
@@ -74,7 +84,7 @@ const HighScoreCamera: React.FC<HighScoreCameraProps> = ({ onComplete }) => {
                     </button>
                 )}
              </div>
-             {streamActive && (
+             {stream && (
                  <button onClick={takePhoto} className="bg-yellow-400 text-black font-bold py-3 px-8 rounded-full border-4 border-black hover:scale-105 transition-transform flex items-center gap-2">
                      <Camera size={20} /> Taka Mynd
                  </button>

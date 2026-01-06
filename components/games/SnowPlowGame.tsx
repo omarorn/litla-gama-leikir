@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Snowflake, Car, AlertOctagon, Infinity } from 'lucide-react';
+import { Snowflake, Car, AlertOctagon, Infinity, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface SnowPlowGameProps {
@@ -276,8 +276,16 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
             })}
         </div>
         
-        <div className="mt-4 text-white text-sm font-bold opacity-75">
-            Varastu bíla! Hálka rennur hratt.
+        <div className="mt-4 flex gap-6 text-white/80">
+             <div className="flex items-center gap-2">
+                 <div className="flex gap-0.5">
+                    <span className="bg-slate-600 rounded p-1"><ArrowUp size={12}/></span>
+                    <span className="bg-slate-600 rounded p-1"><ArrowLeft size={12}/></span>
+                    <span className="bg-slate-600 rounded p-1"><ArrowDown size={12}/></span>
+                    <span className="bg-slate-600 rounded p-1"><ArrowRight size={12}/></span>
+                 </div>
+                 <span className="text-xs font-bold uppercase">Stýra</span>
+             </div>
         </div>
         
         {/* D-Pad for mobile */}

@@ -89,11 +89,17 @@ export default function App() {
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center font-sans overflow-x-hidden">
       <header className={`w-full bg-slate-950/80 border-b ${borderColor} p-4 sticky top-0 z-20 backdrop-blur-md`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBackToMenu}>
-             <div className={`${isWinter ? 'bg-cyan-600' : 'bg-yellow-500'} p-2 rounded-sm skew-x-[-10deg]`}>
-                 <Grip className="text-black skew-x-[10deg]" />
-             </div>
-             <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest">Litla Gamaleigan</h1>
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBackToMenu}>
+                 <div className={`${isWinter ? 'bg-cyan-600' : 'bg-yellow-500'} p-2 rounded-sm skew-x-[-10deg]`}>
+                     <Grip className="text-black skew-x-[10deg]" />
+                 </div>
+                 <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest hidden md:block">Litla Gamaleigan</h1>
+                 <h1 className="text-xl font-black uppercase tracking-widest md:hidden">LG Arcade</h1>
+              </div>
+              <a href="https://litla.gamaleigan.is" className="flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase text-slate-400 hover:text-white transition-colors bg-slate-800 px-3 py-1 rounded-full border border-slate-700 hover:border-slate-500">
+                  <ExternalLink size={12} /> <span className="hidden sm:inline">litla.gamaleigan.is</span><span className="sm:hidden">Vefur</span>
+              </a>
           </div>
           <div className="flex items-center gap-4">
               {gameState === 'playing' && (

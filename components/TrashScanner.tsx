@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Scan, CheckCircle, AlertTriangle, Cpu, Loader2 } from 'lucide-react';
 import { identifyTrashItem } from '../services/geminiService';
 
@@ -11,7 +11,7 @@ interface TrashScannerProps {
 const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [active, setActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<{ item: string, bin: string, reason: string } | null>(null);
 
@@ -21,15 +21,29 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setActive(true);
-      }
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setStream(s);
     } catch (e) {
       alert("Myndavél virkar ekki. Athugaðu leyfi.");
     }
   };
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(e => console.error("Video play failed", e));
+    }
+    return () => {
+        // Cleanup happens when component unmounts or stream changes, but we want to keep stream until explicit stop
+    };
+  }, [stream, result]); // Re-attach if result is cleared and we go back to video
+
+  // Cleanup on unmount
+  useEffect(() => {
+      return () => {
+          stream?.getTracks().forEach(t => t.stop());
+      };
+  }, [stream]);
 
   const scan = async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -47,19 +61,22 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
         setResult(data);
     } catch (err) {
         console.error(err);
+        setResult({ item: "Villa", bin: "Óþekkt", reason: "Gat ekki greint mynd." });
     } finally {
         setScanning(false);
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream?.getTracks().forEach(t => t.stop());
-        setActive(false);
     }
+  };
+
+  const reset = () => {
+      setResult(null);
+      // Stream is still active, useEffect will re-attach it to the new video element
   };
 
   return (
     <div className={`w-full bg-slate-900 border-2 ${borderColor} rounded-2xl overflow-hidden shadow-2xl animate-fade-in text-white`}>
       <div className="p-8 flex flex-col items-center min-h-[500px] justify-center">
         
-        {!active && !result && (
+        {!stream && !result && (
             <div className="text-center mb-10">
                 <div className={`inline-block p-4 rounded-full border-2 ${borderColor} bg-slate-800 mb-4`}>
                     <Scan size={48} className={isWinter ? 'text-cyan-400' : 'text-yellow-400'} />
@@ -68,14 +85,14 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
                     AI Flokkunarvél <span className={`text-base align-top ${accentColor}`}>v3.0 PRO</span>
                 </h2>
                 <p className="text-slate-400 text-lg max-w-md mx-auto">
-                    Notaðu Gemini 3 Pro Vision til að greina hvers kyns úrgang með nákvæmni.
+                    Notaðu Gemini 3 Flash Vision til að greina hvers kyns úrgang með nákvæmni.
                 </p>
             </div>
         )}
 
         <div className="w-full max-w-xl relative">
             {!result ? (
-                active ? (
+                stream ? (
                     <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-700">
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                         <div className="absolute inset-0 pointer-events-none">
@@ -105,7 +122,7 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
                          <p className="text-slate-300 text-sm leading-relaxed"><Cpu size={14} className="inline mr-2 opacity-50"/>{result.reason}</p>
                     </div>
                     
-                    <button onClick={() => { setResult(null); startCamera(); }} className="mt-8 text-sm text-slate-400 hover:text-white underline decoration-dotted">
+                    <button onClick={reset} className="mt-8 text-sm text-slate-400 hover:text-white underline decoration-dotted">
                         Skanna annan hlut
                     </button>
                 </div>
@@ -114,7 +131,7 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
 
         <div className="w-full max-w-sm mt-8">
             {!result && (
-                !active ? (
+                !stream ? (
                     <button onClick={startCamera} className={`w-full py-5 ${bgButton} text-black rounded-xl font-black uppercase tracking-widest transition-all hover:scale-105 shadow-lg flex items-center justify-center gap-3`}>
                         <Camera size={24} /> Virkja Skanna
                     </button>

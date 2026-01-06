@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Recycle, Apple, Box, Star, Clock } from 'lucide-react';
+import { Trash2, Recycle, Apple, Box, Star, MousePointer2 } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface GarbageGameProps {
@@ -53,7 +53,8 @@ const TRASH_ITEMS: ItemData[] = [
 const SHIFTS = [
     { name: "Morgunvakt", quota: 10, speedMod: 1.0, bg: "bg-sky-100" },
     { name: "Eftirmiðdagur", quota: 15, speedMod: 1.3, bg: "bg-orange-50" },
-    { name: "Næturvakt", quota: 25, speedMod: 1.7, bg: "bg-slate-800" }
+    { name: "Næturvakt", quota: 25, speedMod: 1.7, bg: "bg-slate-800" },
+    { name: "Helgarvakt", quota: 40, speedMod: 2.2, bg: "bg-purple-900" }
 ];
 
 const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
@@ -116,7 +117,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
       const elapsed = Date.now() - startTimeRef.current;
       
       // Spawn Rate logic based on Level
-      const baseSpawnRate = Math.max(600, 1500 - (level * 300)); 
+      const baseSpawnRate = Math.max(500, 1500 - (level * 350)); 
       const speedMultiplier = currentShift.speedMod + (elapsed / 60000);
 
       if (time - lastSpawn > baseSpawnRate) {
@@ -172,7 +173,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
       const timeout = setTimeout(() => {
           setShowReport(true);
           audio.playWin();
-      }, 60000); // 1 minute fixed game loop for now, levels happen inside it
+      }, 60000); // 1 minute fixed game loop
       return () => clearTimeout(timeout);
   }, []);
 
@@ -337,6 +338,14 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
         ))}
       </div>
       
+      {/* Instructions Overlay */}
+      <div className="absolute top-24 right-4 bg-white/80 backdrop-blur p-2 rounded-lg border border-slate-200 shadow-lg pointer-events-none opacity-50 z-0">
+           <div className="flex flex-col items-center text-xs text-slate-500 font-bold uppercase">
+               <MousePointer2 size={16} className="mb-1" />
+               <span>Smelltu</span>
+           </div>
+      </div>
+
     </div>
   );
 };

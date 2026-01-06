@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+
+import React, { useRef, useState, useEffect } from 'react';
 import { Camera, Wand2, RefreshCw } from 'lucide-react';
 import { editWorkerImage } from '../services/geminiService';
 
@@ -9,15 +10,32 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [editedPhoto, setEditedPhoto] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [streamActive, setStreamActive] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const startCamera = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setStreamActive(true);
+    try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        setStream(s);
+    } catch (e) {
+        alert("Myndavél virkar ekki.");
     }
   };
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(console.error);
+    }
+    return () => {
+        // stream cleanup only on unmount
+    };
+  }, [stream, photo]); // Re-run when photo is cleared (camera view returns)
+
+  useEffect(() => {
+      return () => {
+          stream?.getTracks().forEach(t => t.stop());
+      };
+  }, [stream]);
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -26,9 +44,6 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       canvasRef.current.height = videoRef.current.videoHeight;
       ctx?.drawImage(videoRef.current, 0, 0);
       setPhoto(canvasRef.current.toDataURL('image/jpeg'));
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream?.getTracks().forEach(t => t.stop());
-      setStreamActive(false);
     }
   };
 
@@ -38,6 +53,12 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       const result = await editWorkerImage(photo.split(',')[1], prompt);
       if (result) setEditedPhoto(`data:image/jpeg;base64,${result}`);
       setLoading(false);
+  };
+
+  const reset = () => {
+      setPhoto(null);
+      setEditedPhoto(null);
+      setPrompt("");
   };
 
   return (
@@ -52,7 +73,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="p-6">
             {!photo ? (
                 <div className="relative bg-black h-64 rounded-lg flex items-center justify-center mb-4 border border-slate-600">
-                    {streamActive ? (
+                    {stream ? (
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
                     ) : (
                         <button onClick={startCamera} className="flex flex-col items-center text-slate-500">
@@ -60,7 +81,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <span className="mt-2">Opna Myndavél</span>
                         </button>
                     )}
-                    {streamActive && (
+                    {stream && (
                         <button onClick={takePhoto} className="absolute bottom-4 bg-white text-black p-3 rounded-full shadow-lg">
                             <Camera size={24} />
                         </button>
@@ -94,7 +115,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     )}
                     
                     {editedPhoto && (
-                        <button onClick={() => { setPhoto(null); setEditedPhoto(null); setPrompt(""); }} className="w-full py-3 bg-slate-700 rounded font-bold">
+                        <button onClick={reset} className="w-full py-3 bg-slate-700 rounded font-bold">
                             Byrja Uppá Nýtt
                         </button>
                     )}

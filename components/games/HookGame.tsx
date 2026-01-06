@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Truck, Wind, ArrowRight } from 'lucide-react';
+import { Truck, Wind, ArrowRight, ArrowLeft } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface HookGameProps {
@@ -16,6 +16,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
   // Physics State
   const [truckX, setTruckX] = useState(10);
   const [containerX, setContainerX] = useState(80);
+  const [containerDir, setContainerDir] = useState(1);
   const [containerType, setContainerType] = useState<'normal' | 'heavy' | 'priority'>('normal');
   
   const [hookExtending, setHookExtending] = useState(false);
@@ -36,11 +37,31 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
       setTimeLeft(45 + (level * 10)); // Bonus time for harder levels
   }, [level]);
 
+  // Moving container logic for levels 3+
+  useEffect(() => {
+      let animId: number;
+      if (level >= 3 && !hasContainer) {
+          const animateContainer = () => {
+              setContainerX(prev => {
+                  let next = prev + (0.1 * (level - 2) * containerDir);
+                  if (next > 90 || next < 50) {
+                      setContainerDir(d => d * -1);
+                      return prev;
+                  }
+                  return next;
+              });
+              animId = requestAnimationFrame(animateContainer);
+          };
+          animId = requestAnimationFrame(animateContainer);
+      }
+      return () => cancelAnimationFrame(animId);
+  }, [level, containerDir, hasContainer]);
+
   const resetRound = useCallback(() => {
       setHasContainer(false);
       setHookLength(0);
       setHookDrift(0);
-      setContainerX(Math.random() * 70 + 20); // Keep somewhat central
+      setContainerX(Math.random() * 40 + 50); // Random position right side
       setTruckX(10);
       
       // Randomize type
@@ -56,20 +77,32 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
     setTruckX(prev => Math.max(0, Math.min(90, prev + dir)));
   }, [hookExtending, hasContainer]);
 
+  const cancelHook = useCallback(() => {
+    if (hookExtending) {
+        setHookExtending(false);
+        audio.playClick();
+    }
+  }, [hookExtending]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') moveTruck(-4);
       if (e.key === 'ArrowRight') moveTruck(4);
       if (e.key === ' ' || e.key === 'Enter') {
-        if (!hookExtending && !hasContainer) {
+        if (hookExtending) {
+            cancelHook();
+        } else if (!hasContainer) {
             setHookExtending(true);
             audio.playClick();
         }
       }
+      if (e.key === 'Escape') {
+          cancelHook();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [moveTruck, hookExtending, hasContainer]);
+  }, [moveTruck, hookExtending, hasContainer, cancelHook]);
 
   // Hook Logic Loop
   useEffect(() => {
@@ -186,7 +219,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
         {!hasContainer && (
             <div 
                 className={`absolute bottom-12 w-16 h-12 ${getContainerColor()} border-2 rounded-sm flex items-center justify-center shadow-lg`}
-                style={{ left: `${containerX}%`, transition: 'left 0.5s' }}
+                style={{ left: `${containerX}%`, transition: 'left 0.1s linear' }}
             >
                 <div className="w-full h-1 bg-white opacity-20 rotate-45"></div>
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 border-2 border-gray-400 rounded-full"></div>
@@ -221,11 +254,46 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
              )}
         </div>
 
-        {/* Mobile Controls */}
-        <div className="absolute bottom-2 left-0 w-full flex justify-center gap-4">
-             <button onClick={() => moveTruck(-10)} className="bg-white/80 p-4 rounded-full font-bold shadow-lg active:bg-slate-200">←</button>
-             <button onClick={() => !hookExtending && !hasContainer && setHookExtending(true)} className="bg-yellow-400 px-8 py-4 rounded-full font-black shadow-lg border-2 border-black active:scale-95 transition-transform">KRÓKUR</button>
-             <button onClick={() => moveTruck(10)} className="bg-white/80 p-4 rounded-full font-bold shadow-lg active:bg-slate-200">→</button>
+        {/* Instructions */}
+        <div className="absolute bottom-2 left-0 w-full flex justify-center gap-4 items-end pb-2 pointer-events-none z-30">
+            <div className="bg-white/80 backdrop-blur rounded-xl px-4 py-2 flex items-center gap-4 text-slate-800 shadow-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                    <span className="bg-slate-200 border border-slate-400 rounded px-1.5 py-0.5"><ArrowLeft size={16}/></span>
+                    <span className="bg-slate-200 border border-slate-400 rounded px-1.5 py-0.5"><ArrowRight size={16}/></span>
+                    <span className="text-xs font-bold uppercase">Keyra</span>
+                </div>
+                <div className="w-px h-6 bg-slate-300"></div>
+                <div className="flex items-center gap-2">
+                    <span className="bg-slate-200 border border-slate-400 rounded px-3 py-0.5 text-xs font-black min-w-[50px] text-center">SPACE</span>
+                    <span className="text-xs font-bold uppercase">Krókur / Sleppa</span>
+                </div>
+            </div>
+        </div>
+
+        {/* Mobile Controls Overlay (Interactive) */}
+        <div className="absolute bottom-0 left-0 w-full h-24 z-40 md:hidden flex justify-between items-center px-4">
+             <button onTouchStart={() => moveTruck(-4)} onClick={() => moveTruck(-4)} className="bg-white/50 w-16 h-16 rounded-full flex items-center justify-center text-3xl opacity-0">L</button>
+             <button onClick={() => !hookExtending && !hasContainer ? setHookExtending(true) : cancelHook()} className="bg-white/50 w-24 h-24 rounded-full opacity-0">ACT</button>
+             <button onTouchStart={() => moveTruck(4)} onClick={() => moveTruck(4)} className="bg-white/50 w-16 h-16 rounded-full flex items-center justify-center text-3xl opacity-0">R</button>
+        </div>
+
+        {/* Mobile Controls Visuals (Only for mobile but using the styled approach above) */}
+        <div className="absolute bottom-2 left-0 w-full flex justify-center gap-4 items-end pb-2 md:hidden pointer-events-auto">
+             <button onClick={() => moveTruck(-10)} className="bg-white/80 p-4 rounded-full font-bold shadow-lg active:bg-slate-200"><ArrowLeft /></button>
+             
+             <div className="relative">
+                 <button onClick={() => !hookExtending && !hasContainer && setHookExtending(true)} className="bg-yellow-400 px-8 py-4 rounded-full font-black shadow-lg border-2 border-black active:scale-95 transition-transform">KRÓKUR</button>
+                 {hookExtending && (
+                    <button 
+                        onClick={cancelHook}
+                        className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg border-2 border-white animate-bounce"
+                    >
+                        SLEPPA
+                    </button>
+                 )}
+             </div>
+
+             <button onClick={() => moveTruck(10)} className="bg-white/80 p-4 rounded-full font-bold shadow-lg active:bg-slate-200"><ArrowRight /></button>
         </div>
     </div>
   );
