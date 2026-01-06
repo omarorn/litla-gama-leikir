@@ -2,6 +2,7 @@
   "name": "Litlu gáma leigu smá leikir",
   "description": "Safn af skemmtilegum smáleikjum fyrir Litlu Gamaleiguna: Flokkun, Snjómokstur, Krókabílar og Gröfur.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

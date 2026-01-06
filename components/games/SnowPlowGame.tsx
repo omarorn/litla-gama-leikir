@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Snowflake, Car, AlertOctagon } from 'lucide-react';
+import { Snowflake, Car, AlertOctagon, Infinity } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface SnowPlowGameProps {
@@ -10,8 +10,16 @@ interface SnowPlowGameProps {
 const GRID_SIZE = 10;
 const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
 
+interface LevelData {
+  id: number | string;
+  name: string;
+  time: number;
+  obstacles: number[];
+  ice: number[];
+}
+
 // Level Definitions
-const LEVELS = [
+const LEVELS: LevelData[] = [
   {
     id: 1,
     name: "Heimaplaanið",
@@ -35,8 +43,42 @@ const LEVELS = [
   }
 ];
 
+const generateEndlessLevel = (index: number): LevelData => {
+  const diff = index - LEVELS.length + 1;
+  const obstacleCount = Math.min(30, 8 + diff * 2);
+  const iceCount = Math.min(45, 12 + diff * 3);
+  
+  const obstacles: number[] = [];
+  const ice: number[] = [];
+  const availableIndices = Array.from({ length: TOTAL_CELLS }, (_, i) => i).filter(i => i !== 0); // Player starts at 0
+
+  // Shuffle available indices
+  for (let i = availableIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
+  }
+
+  for (let i = 0; i < obstacleCount; i++) {
+    obstacles.push(availableIndices.pop()!);
+  }
+  for (let i = 0; i < iceCount; i++) {
+    if (availableIndices.length > 0) {
+      ice.push(availableIndices.pop()!);
+    }
+  }
+
+  return {
+    id: `E-${diff}`,
+    name: `Næturvakt ${diff}`,
+    time: Math.max(25, 60 - diff * 3),
+    obstacles,
+    ice
+  };
+};
+
 const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
   const [levelIndex, setLevelIndex] = useState(0);
+  const [currentLevel, setCurrentLevel] = useState<LevelData>(LEVELS[0]);
   const [grid, setGrid] = useState<boolean[]>([]); // true = snow
   const [playerPos, setPlayerPos] = useState(0);
   const [timeLeft, setTimeLeft] = useState(LEVELS[0].time);
@@ -46,12 +88,12 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
 
   // Initialize Level
   const initLevel = useCallback((idx: number) => {
-    const lvl = LEVELS[idx];
+    const lvl = idx < LEVELS.length ? LEVELS[idx] : generateEndlessLevel(idx);
     const newGrid = Array(TOTAL_CELLS).fill(true);
     
-    // Clear snow where obstacles are
     lvl.obstacles.forEach(obs => newGrid[obs] = false);
     
+    setCurrentLevel(lvl);
     setGrid(newGrid);
     setPlayerPos(0);
     setTimeLeft(lvl.time);
@@ -64,17 +106,11 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
   }, [initLevel]);
 
   const handleLevelComplete = () => {
-    if (levelIndex < LEVELS.length - 1) {
-      audio.playWin();
-      setLevelIndex(prev => {
-        const next = prev + 1;
-        initLevel(next);
-        setShowLevelUp(true);
-        return next;
-      });
-    } else {
-      onGameOver();
-    }
+    audio.playWin();
+    const nextIdx = levelIndex + 1;
+    setLevelIndex(nextIdx);
+    initLevel(nextIdx);
+    setShowLevelUp(true);
   };
 
   useEffect(() => {
@@ -103,7 +139,7 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
             if (next < 0 || next >= TOTAL_CELLS) return current; // Top/Bottom edge
 
             // Obstacle check
-            if (LEVELS[levelIndex].obstacles.includes(next)) {
+            if (currentLevel.obstacles.includes(next)) {
                 audio.playError(); // Crash sound
                 onScore(s => Math.max(0, s - 50)); // Penalty
                 return current;
@@ -113,7 +149,7 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
             processTile(next);
 
             // Ice Physics
-            if (LEVELS[levelIndex].ice.includes(next)) {
+            if (currentLevel.ice.includes(next)) {
                 setIsSliding(true);
                 setTimeout(() => {
                    setIsSliding(false);
@@ -140,15 +176,15 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerPos, grid, onScore, isSliding, levelIndex, showLevelUp]);
+  }, [playerPos, grid, onScore, isSliding, levelIndex, showLevelUp, currentLevel]);
 
   // Check Win Condition (90% cleared)
   useEffect(() => {
-      const totalSnow = TOTAL_CELLS - LEVELS[levelIndex].obstacles.length;
+      const totalSnow = TOTAL_CELLS - currentLevel.obstacles.length;
       if (snowCleared >= totalSnow * 0.9 && !showLevelUp) {
           handleLevelComplete();
       }
-  }, [snowCleared, levelIndex, showLevelUp]);
+  }, [snowCleared, showLevelUp, currentLevel.obstacles.length]);
 
   useEffect(() => {
       if (showLevelUp) return;
@@ -165,20 +201,24 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
       return () => clearInterval(timer);
   }, [onGameOver, showLevelUp]);
 
-  const currentLevelData = LEVELS[levelIndex];
-
   if (showLevelUp) {
+      const isEndless = levelIndex >= LEVELS.length;
       return (
           <div className="w-full h-[400px] bg-slate-800 rounded-xl flex flex-col items-center justify-center text-white border-4 border-slate-300">
-              <h2 className="text-3xl font-black text-yellow-400 mb-2">{currentLevelData.name}</h2>
-              <p className="text-xl mb-6">Borð {levelIndex + 1} / {LEVELS.length}</p>
+              <h2 className="text-3xl font-black text-yellow-400 mb-2 flex items-center gap-2">
+                {currentLevel.name}
+                {isEndless && <Infinity className="text-cyan-400" size={28} />}
+              </h2>
+              <p className="text-xl mb-6">
+                {isEndless ? `Vinnslustig: ${levelIndex - LEVELS.length + 1}` : `Borð ${levelIndex + 1} / ${LEVELS.length}`}
+              </p>
               <div className="flex gap-4 text-sm text-slate-300 mb-8">
-                  <div className="flex items-center gap-1"><Car size={16} /> {currentLevelData.obstacles.length} Bílar</div>
-                  <div className="flex items-center gap-1"><AlertOctagon size={16} /> {currentLevelData.ice.length} Hálkublettir</div>
+                  <div className="flex items-center gap-1"><Car size={16} /> {currentLevel.obstacles.length} Bílar</div>
+                  <div className="flex items-center gap-1"><AlertOctagon size={16} /> {currentLevel.ice.length} Hálkublettir</div>
               </div>
               <button 
                 onClick={() => setShowLevelUp(false)}
-                className="bg-green-500 text-white px-8 py-3 rounded-full font-bold text-xl hover:scale-105 transition-transform"
+                className="bg-green-500 text-white px-8 py-3 rounded-full font-bold text-xl hover:scale-105 transition-transform shadow-lg"
               >
                   Byrja Moka
               </button>
@@ -190,13 +230,13 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
     <div className="relative w-full h-[400px] bg-slate-800 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner flex flex-col items-center justify-center select-none">
         <div className="absolute top-4 left-4 font-bold text-2xl text-white z-10 drop-shadow-md">⏱ {timeLeft}s</div>
         <div className="absolute top-4 right-4 font-bold text-xl text-yellow-400 z-10 drop-shadow-md">
-             {Math.floor((snowCleared / (TOTAL_CELLS - currentLevelData.obstacles.length)) * 100)}%
+             {Math.floor((snowCleared / (TOTAL_CELLS - currentLevel.obstacles.length)) * 100)}%
         </div>
         
         <div className="grid grid-cols-10 gap-0.5 bg-slate-900 border-4 border-slate-600 relative">
             {Array.from({ length: TOTAL_CELLS }).map((_, idx) => {
-                const isObstacle = currentLevelData.obstacles.includes(idx);
-                const isIce = currentLevelData.ice.includes(idx);
+                const isObstacle = currentLevel.obstacles.includes(idx);
+                const isIce = currentLevel.ice.includes(idx);
                 const hasSnow = grid[idx];
                 const isPlayer = idx === playerPos;
 
