@@ -12,6 +12,7 @@ type BinType = 'plast' | 'pappi' | 'matur' | 'almennt';
 interface ItemData {
   name: string;
   type: BinType;
+  image: string;
 }
 
 interface FallingItem extends ItemData {
@@ -27,27 +28,35 @@ interface Mistake {
   correctBin: BinType;
 }
 
+// Using Placehold.co with specific brand colors to simulate real Icelandic products
 const TRASH_ITEMS: ItemData[] = [
-    { name: 'G-Mjólk', type: 'pappi' },
-    { name: 'Kókómjólk', type: 'pappi' },
-    { name: 'Pizzakassi', type: 'pappi' },
-    { name: 'Morgunkorn', type: 'pappi' },
-    { name: 'Eggjabakki', type: 'pappi' },
-    { name: 'SS Pylsur', type: 'plast' },
-    { name: 'Skyr dós', type: 'plast' },
-    { name: 'Nóa Kropp', type: 'plast' },
-    { name: 'Brauðpoki', type: 'plast' },
-    { name: 'Hakkbakki', type: 'plast' },
-    { name: 'Bananahýði', type: 'matur' },
-    { name: 'Epla skrutur', type: 'matur' },
-    { name: 'Kaffikorgur', type: 'matur' },
-    { name: 'Eggjaskurn', type: 'matur' },
-    { name: 'Fiskbein', type: 'matur' },
-    { name: 'Bleyja', type: 'almennt' },
-    { name: 'Hundaskítur', type: 'almennt' },
-    { name: 'Tyggjó', type: 'almennt' },
-    { name: 'Ryksugupoki', type: 'almennt' },
-    { name: 'Blautklútar', type: 'almennt' },
+    // Pappi
+    { name: 'G-Mjólk', type: 'pappi', image: 'https://placehold.co/100x100/0054a6/ffffff?text=G-Mjólk' },
+    { name: 'Kókómjólk', type: 'pappi', image: 'https://placehold.co/100x100/5e3a18/facc15?text=Kókó' },
+    { name: 'Pizzakassi', type: 'pappi', image: 'https://placehold.co/100x100/854d0e/ffffff?text=Pizza' },
+    { name: 'Morgunkorn', type: 'pappi', image: 'https://placehold.co/100x100/d97706/ffffff?text=Cheerios' },
+    { name: 'Eggjabakki', type: 'pappi', image: 'https://placehold.co/100x100/a8a29e/ffffff?text=Egg' },
+    
+    // Plast
+    { name: 'SS Pylsur', type: 'plast', image: 'https://placehold.co/100x100/1e3a8a/facc15?text=SS+Pylsur' },
+    { name: 'Skyr dós', type: 'plast', image: 'https://placehold.co/100x100/0ea5e9/ffffff?text=Skyr' },
+    { name: 'Nóa Kropp', type: 'plast', image: 'https://placehold.co/100x100/facc15/713f12?text=Kropp' },
+    { name: 'Brauðpoki', type: 'plast', image: 'https://placehold.co/100x100/ef4444/ffffff?text=Bónus' },
+    { name: 'Hakkbakki', type: 'plast', image: 'https://placehold.co/100x100/000000/ffffff?text=Kjöt' },
+    
+    // Matur
+    { name: 'Bananahýði', type: 'matur', image: 'https://placehold.co/100x100/fde047/000000?text=Banana' },
+    { name: 'Epla skrutur', type: 'matur', image: 'https://placehold.co/100x100/84cc16/ffffff?text=Epli' },
+    { name: 'Kaffikorgur', type: 'matur', image: 'https://placehold.co/100x100/451a03/ffffff?text=Kaffi' },
+    { name: 'Eggjaskurn', type: 'matur', image: 'https://placehold.co/100x100/fff7ed/000000?text=Skurn' },
+    { name: 'Fiskbein', type: 'matur', image: 'https://placehold.co/100x100/94a3b8/ffffff?text=Bein' },
+    
+    // Almennt
+    { name: 'Bleyja', type: 'almennt', image: 'https://placehold.co/100x100/ec4899/ffffff?text=Bleyja' },
+    { name: 'Hundaskítur', type: 'almennt', image: 'https://placehold.co/100x100/3f2c22/ffffff?text=💩' },
+    { name: 'Tyggjó', type: 'almennt', image: 'https://placehold.co/100x100/f472b6/ffffff?text=Tyggjó' },
+    { name: 'Ryksugupoki', type: 'almennt', image: 'https://placehold.co/100x100/64748b/ffffff?text=Ryk' },
+    { name: 'Blautklútar', type: 'almennt', image: 'https://placehold.co/100x100/38bdf8/ffffff?text=Klútar' },
 ];
 
 const SHIFTS = [
@@ -139,14 +148,14 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                onScore(scoreRef.current);
                setShiftProgress(p => p + 1);
                setCombo(c => Math.min(10, c + 1)); // Cap combo
-               audio.playSuccess();
+               audio.playTrashCorrect(); // NEW CUSTOM SOUND
              } else {
                // FAIL
                scoreRef.current = Math.max(0, scoreRef.current - 5);
                onScore(scoreRef.current);
                setMistakes(m => [...m, { item: item.name, wrongBin: activeBin, correctBin: item.type }]);
                setCombo(0); // Reset combo
-               audio.playError();
+               audio.playTrashWrong(); // NEW CUSTOM SOUND
              }
              return false; 
            }
@@ -289,7 +298,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           <div className="w-full h-full bg-[repeating-linear-gradient(0deg,transparent,transparent_19px,#00000010_20px)] animate-scroll"></div>
       </div>
       
-      {/* Falling Items */}
+      {/* Falling Items - NOW WITH IMAGES */}
       {items.map(item => (
         <div 
           key={item.id} 
@@ -300,11 +309,11 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
             transform: 'translateX(-50%)' 
           }}
         >
-          <div className="bg-white px-2 py-1 rounded shadow-sm text-[10px] font-bold border border-gray-200 whitespace-nowrap mb-1">
+          <div className="bg-white px-2 py-0.5 rounded shadow-sm text-[9px] font-bold border border-gray-200 whitespace-nowrap mb-1 opacity-80">
               {item.name}
           </div>
-          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-slate-100 text-2xl">
-             {item.type === 'matur' ? '🍎' : item.type === 'pappi' ? '📦' : item.type === 'plast' ? '🥤' : '🗑️'}
+          <div className="w-16 h-16 rounded-lg flex items-center justify-center filter drop-shadow-lg transform hover:scale-110 transition-transform">
+             <img src={item.image} alt={item.name} className="w-full h-full object-contain rounded-md" />
           </div>
         </div>
       ))}

@@ -62,6 +62,22 @@ class AudioService {
         setTimeout(() => this.playTone(freq, 'triangle', 0.4, 0.1), i * 150);
     });
   }
+
+  // Custom Trash Sounds
+  playTrashCorrect() {
+      // A satisfying "pop" / "coin" sound
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      this.playTone(1200, 'sine', 0.1, 0.1);
+      setTimeout(() => this.playTone(2000, 'triangle', 0.2, 0.05), 50);
+  }
+
+  playTrashWrong() {
+      // A dull "thud" or "splat"
+      if (!this.ctx) return;
+      this.playTone(100, 'sawtooth', 0.1, 0.2);
+      setTimeout(() => this.playTone(80, 'square', 0.2, 0.2), 50);
+  }
 }
 
 export const audio = new AudioService();
