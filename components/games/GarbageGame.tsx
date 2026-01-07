@@ -76,6 +76,7 @@ const SHIFTS = [
 const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const [items, setItems] = useState<FallingItem[]>([]);
   const [activeBin, setActiveBin] = useState<BinType>('almennt');
+  const [animatingBin, setAnimatingBin] = useState<BinType | null>(null); // State for bin animation
   const [mistakes, setMistakes] = useState<Mistake[]>([]);
   const [showReport, setShowReport] = useState(false);
   
@@ -169,6 +170,11 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                setShiftProgress(p => p + 1);
                setCombo(c => Math.min(10, c + 1));
                audio.playTrashCorrect();
+               
+               // Trigger Animation
+               setAnimatingBin(activeBin);
+               setTimeout(() => setAnimatingBin(null), 200);
+
              } else {
                // FAIL
                scoreRef.current = Math.max(0, scoreRef.current - 5);
@@ -364,10 +370,12 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           <button
             key={type}
             onClick={() => handleBinSelect(type)}
-            className={`flex flex-col items-center justify-center rounded-xl border-b-8 transition-all active:border-b-0 active:translate-y-2 relative overflow-hidden ${getBinColor(type)} ${
-              activeBin === type 
-                ? 'ring-4 ring-yellow-400 -translate-y-2 shadow-xl brightness-110' 
-                : 'opacity-90 hover:opacity-100 grayscale-[0.3] hover:grayscale-0'
+            className={`flex flex-col items-center justify-center rounded-xl border-b-8 transition-all active:border-b-0 active:translate-y-2 relative overflow-hidden ${getBinColor(type)} 
+            ${animatingBin === type 
+                ? '-translate-y-6 scale-110 ring-4 ring-green-400 brightness-125 duration-75 shadow-2xl z-10' 
+                : activeBin === type 
+                    ? 'ring-4 ring-yellow-400 -translate-y-2 shadow-xl brightness-110' 
+                    : 'opacity-90 hover:opacity-100 grayscale-[0.3] hover:grayscale-0'
             }`}
           >
             {/* Visual Color Strip at Top */}

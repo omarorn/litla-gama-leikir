@@ -119,6 +119,12 @@ export default function App() {
       <main className="flex-1 w-full max-w-6xl p-6 flex flex-col items-center justify-center z-10">
         {activeGame === GameType.NONE ? (
              <div className="w-full flex flex-col items-center animate-fade-in py-10">
+                 
+                 {/* GAME WHEEL */}
+                 <div className="mb-12 transform scale-75 md:scale-100">
+                     <GameWheel onGameSelected={startGame} isWinter={isWinter} />
+                 </div>
+
                  <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-widest">Veldu verkefni dagsins</h2>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl">
                      {GAME_LIST.map((game) => (

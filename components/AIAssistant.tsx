@@ -1,12 +1,12 @@
 
 import React, { useState, useRef } from 'react';
-import { MessageSquare, Image as ImageIcon, Mic, Send, Loader2, X, Trash2, MicOff } from 'lucide-react';
-import { sendMessageToGemini, generateGameImage, transcribeAudioFromBase64 } from '../services/geminiService';
+import { MessageSquare, Image as ImageIcon, Mic, Send, Loader2, X, Globe, ExternalLink } from 'lucide-react';
+import { sendMessageToGemini, generateGameImage, transcribeAudioFromBase64, searchWithGrounding } from '../services/geminiService';
 
 const AIAssistant: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const [mode, setMode] = useState<'chat' | 'image' | 'audio'>('chat');
+    const [mode, setMode] = useState<'chat' | 'image' | 'audio' | 'search'>('chat');
     const [chatInput, setChatInput] = useState("");
-    const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
+    const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string, links?: string[] }[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Image Generation State
@@ -26,8 +26,13 @@ const AIAssistant: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setChatInput("");
         setLoading(true);
         try {
-            const reply = await sendMessageToGemini(userMsg, []);
-            setMessages(prev => [...prev, { role: 'model', text: reply || "Gat ekki svarað." }]);
+            if (mode === 'search') {
+                const result = await searchWithGrounding(userMsg);
+                setMessages(prev => [...prev, { role: 'model', text: result.text, links: result.links }]);
+            } else {
+                const reply = await sendMessageToGemini(userMsg, []);
+                setMessages(prev => [...prev, { role: 'model', text: reply || "Gat ekki svarað." }]);
+            }
         } catch (e) {
             setMessages(prev => [...prev, { role: 'model', text: "Villa kom upp í samskiptum." }]);
         } finally {
@@ -59,7 +64,6 @@ const AIAssistant: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     const text = await transcribeAudioFromBase64(base64);
                     setMessages(prev => [...prev, { role: 'user', text: `[Rödd]: ${text}` }]);
                     setLoading(false);
-                    // Optionally feed this to chat
                     setChatInput(text);
                     setMode('chat');
                 };
@@ -80,26 +84,36 @@ const AIAssistant: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="w-full max-w-2xl mx-auto bg-slate-900 border-2 border-slate-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[600px] text-white">
             <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center">
                 <div className="flex gap-4">
-                    <button onClick={() => setMode('chat')} className={`p-2 rounded ${mode === 'chat' ? 'bg-blue-600' : 'hover:bg-slate-700'}`}><MessageSquare size={20} /></button>
-                    <button onClick={() => setMode('image')} className={`p-2 rounded ${mode === 'image' ? 'bg-purple-600' : 'hover:bg-slate-700'}`}><ImageIcon size={20} /></button>
-                    <button onClick={() => setMode('audio')} className={`p-2 rounded ${mode === 'audio' ? 'bg-red-600' : 'hover:bg-slate-700'}`}><Mic size={20} /></button>
+                    <button onClick={() => setMode('chat')} className={`p-2 rounded ${mode === 'chat' ? 'bg-blue-600' : 'hover:bg-slate-700'}`} title="Spjall"><MessageSquare size={20} /></button>
+                    <button onClick={() => setMode('search')} className={`p-2 rounded ${mode === 'search' ? 'bg-green-600' : 'hover:bg-slate-700'}`} title="Vefleit"><Globe size={20} /></button>
+                    <button onClick={() => setMode('image')} className={`p-2 rounded ${mode === 'image' ? 'bg-purple-600' : 'hover:bg-slate-700'}`} title="Myndir"><ImageIcon size={20} /></button>
+                    <button onClick={() => setMode('audio')} className={`p-2 rounded ${mode === 'audio' ? 'bg-red-600' : 'hover:bg-slate-700'}`} title="Tal"><Mic size={20} /></button>
                 </div>
                 <button onClick={onBack} className="text-slate-400 hover:text-white"><X size={24} /></button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {mode === 'chat' && (
+                {(mode === 'chat' || mode === 'search') && (
                     <>
                         {messages.length === 0 && (
                             <div className="text-center text-slate-500 mt-20">
-                                <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
-                                <p>Spyrðu Gemini Pro um hvað sem er varðandi vinnusvæðið.</p>
+                                {mode === 'search' ? <Globe size={48} className="mx-auto mb-4 opacity-20" /> : <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />}
+                                <p>{mode === 'search' ? "Leitaðu á netinu með Gemini 3 Grounding." : "Spyrðu Gemini Pro um hvað sem er."}</p>
                             </div>
                         )}
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] p-3 rounded-xl ${m.role === 'user' ? 'bg-blue-600 rounded-tr-none' : 'bg-slate-800 rounded-tl-none border border-slate-700'}`}>
                                     <p className="text-sm">{m.text}</p>
+                                    {m.links && m.links.length > 0 && (
+                                        <div className="mt-3 space-y-1 pt-3 border-t border-slate-600/50">
+                                            {m.links.map((link, l) => (
+                                                <a key={l} href={link} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs text-green-400 hover:underline bg-slate-900/50 p-1.5 rounded truncate">
+                                                    <ExternalLink size={10} /> {link}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -164,17 +178,17 @@ const AIAssistant: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 )}
             </div>
 
-            {mode === 'chat' && (
+            {(mode === 'chat' || mode === 'search') && (
                 <div className="p-4 bg-slate-800 border-t border-slate-700 flex gap-2">
                     <input 
                         className="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-blue-500"
-                        placeholder="Skrifaðu skilaboð..."
+                        placeholder={mode === 'search' ? "Leitaðu á vefnum..." : "Skrifaðu skilaboð..."}
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleChat()}
                     />
-                    <button onClick={handleChat} disabled={loading} className="bg-blue-600 p-3 rounded-xl hover:bg-blue-500 transition-colors">
-                        <Send size={20} />
+                    <button onClick={handleChat} disabled={loading} className={`${mode === 'search' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'} p-3 rounded-xl transition-colors`}>
+                        {mode === 'search' ? <Globe size={20} /> : <Send size={20} />}
                     </button>
                 </div>
             )}
