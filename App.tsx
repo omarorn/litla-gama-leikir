@@ -201,4 +201,33 @@ export default function App() {
                 {activeGame === GameType.SAND && <SandGame onScore={setScore} onGameOver={handleGameOver} />}
                 {activeGame === GameType.SCANNER && <TrashScanner onBack={handleBackToMenu} isWinter={isWinter} />}
                 {activeGame === GameType.GEAR && <GearStation onBack={handleBackToMenu} />}
-                {activeGame === GameType.MAPS && <MapOps onBack={
+                {activeGame === GameType.MAPS && <MapOps onBack={handleBackToMenu} />}
+                {activeGame === ExtendedGameType.ASSISTANT && <AIAssistant onBack={handleBackToMenu} />}
+
+             {gameState === 'highscore' && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md z-50 rounded-xl">
+                     <HighScoreCamera onComplete={handleHighScoreComplete} score={score} />
+                 </div>
+             )}
+
+             {gameState === 'gameover' && !['SCANNER', 'GEAR', 'MAPS', 'ASSISTANT'].includes(activeGame as string) && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 rounded-xl">
+                     <div className={`bg-slate-900 border-2 ${borderColor} p-10 rounded-2xl text-center shadow-2xl`}>
+                        <h2 className="text-4xl font-black text-white uppercase mb-4">Verki lokið</h2>
+                        <div className={`${accentColor} font-mono text-4xl font-bold mb-8`}>{score} STIG</div>
+                        <div className="flex gap-4">
+                            <button onClick={() => startGame(activeGame)} className="bg-yellow-500 text-black px-8 py-4 rounded-xl font-bold flex items-center gap-2">
+                                <Play size={20} fill="black" /> Reyna aftur
+                            </button>
+                            <button onClick={handleBackToMenu} className="bg-slate-700 text-white px-8 py-4 rounded-xl font-bold">Loka</button>
+                        </div>
+                     </div>
+                 </div>
+             )}
+          </div>
+        )}
+      </main>
+      <Foreman gameType={activeGame as GameType} score={score} gameState={gameState} />
+    </div>
+  );
+}

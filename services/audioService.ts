@@ -108,6 +108,31 @@ class AudioService {
       this.playTone(100, 'sawtooth', 0.1, 0.2);
       setTimeout(() => this.playTone(80, 'square', 0.2, 0.2), 50);
   }
+
+  playTrashBreak() {
+      // A crunch/smash sound
+      if (!this.ctx || !this.enabled) return;
+      this.ensureContext();
+
+      // Noise burst (simulated with random frequencies on sawtooth)
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + 0.2); // Drop pitch fast
+      
+      gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.2);
+      
+      // Secondary high pitch "crack"
+      this.playTone(800, 'square', 0.05, 0.1);
+  }
 }
 
 export const audio = new AudioService();
