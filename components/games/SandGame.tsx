@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Wind, Trophy, CornerDownLeft, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Bird, Loader2, BrainCircuit } from 'lucide-react';
+import { Wind, Trophy, CornerDownLeft, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Bird, Loader2, BrainCircuit, Sparkles } from 'lucide-react';
 import { audio } from '../../services/audioService';
 import { generateSandLevel } from '../../services/geminiService';
 
@@ -34,6 +34,7 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
   
   const [rotation, setRotation] = useState(0); // 0 = Left (Sand), 180 = Right (Bin)
   const [hasSand, setHasSand] = useState(false);
+  const [hasTreasure, setHasTreasure] = useState(false); // New: LG Treasure state
   const [armHeight, setArmHeight] = useState(50); // 0 = up, 100 = down
   const [timeLeft, setTimeLeft] = useState(60);
   
@@ -68,6 +69,7 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
           setTimeLeft(60 + (levelIdx * 5));
           setCurrentScore(0);
           setLoadingLevel(false);
+          setHasTreasure(false);
       };
       loadLevel();
   }, [levelIdx]);
@@ -84,24 +86,35 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
              if (rotation < 30 && armHeight > 70 && !hasSand) {
                   // DIG
                   setHasSand(true);
+                  // Chance for LG Treasure
+                  if (Math.random() < 0.1) setHasTreasure(true);
+                  
                   audio.playClick();
                   spawnParticles(20, 100, 'bg-yellow-700'); // Dirt
              } else if (rotation > 150 && armHeight > 20 && hasSand) {
                   // DUMP
                   setHasSand(false);
-                  spawnParticles(15, 60, 'bg-yellow-500'); // Sand
                   
-                  // Score calculation
-                  onScore(s => {
-                      const points = 50 + (levelIdx * 10);
-                      const newScore = s + points;
-                      setCurrentScore(cs => cs + points);
-                      return newScore;
-                  });
-                  audio.playSuccess();
+                  if (hasTreasure) {
+                      setHasTreasure(false);
+                      spawnParticles(20, 60, 'bg-yellow-400'); // Gold
+                      onScore(s => s + 300); // Big Bonus
+                      audio.playWin();
+                  } else {
+                      spawnParticles(15, 60, 'bg-yellow-500'); // Sand
+                      // Score calculation
+                      onScore(s => {
+                          const points = 50 + (levelIdx * 10);
+                          const newScore = s + points;
+                          setCurrentScore(cs => cs + points);
+                          return newScore;
+                      });
+                      audio.playSuccess();
+                  }
              } else if (hasSand) {
                  // Wasted
                  setHasSand(false);
+                 setHasTreasure(false);
                  spawnParticles(10, 60, 'bg-yellow-500');
                  audio.playError();
              }
@@ -117,7 +130,7 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('keydown', handleAction);
     };
-  }, [rotation, armHeight, hasSand, levelData, loadingLevel, onScore, levelIdx]);
+  }, [rotation, armHeight, hasSand, hasTreasure, levelData, loadingLevel, onScore, levelIdx]);
 
   // Game Loop
   useEffect(() => {
@@ -335,6 +348,12 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
                     {/* Bucket */}
                     <div className={`absolute left-0 -bottom-4 w-12 h-10 border-4 border-black rounded-bl-3xl rounded-br-md origin-top-left transform rotate-12 ${hasSand ? 'bg-yellow-600' : 'bg-slate-800'}`}>
                         {hasSand && <div className="absolute -top-2 left-0 w-full h-4 bg-yellow-600 rounded-full"></div>}
+                        {/* TREASURE VISUAL */}
+                        {hasTreasure && (
+                            <div className="absolute top-0 left-2 w-6 h-6 bg-yellow-400 border border-black animate-pulse rounded-full flex items-center justify-center z-50">
+                                <span className="text-[8px] font-black text-black">LG</span>
+                            </div>
+                        )}
                     </div>
                 </div>
            </div>

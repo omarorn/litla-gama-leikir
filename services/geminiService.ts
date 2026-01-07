@@ -12,30 +12,32 @@ const getContext = () => {
     const isNight = hour < 7 || hour >= 20;
     const isWinter = month >= 9 || month <= 3;
     
-    let timeGreeting = isNight ? "Það er komið kvöld á vinnusvæðinu." : "Það er bjartur dagur.";
-    let seasonContext = isWinter ? "Það er vetur og kalt úti. Minntu á hálkuvarnir." : "Það er sumar og góð vinnuveður.";
+    let timeGreeting = isNight ? "Það er niðamyrkur." : "Það er dagur.";
     
-    return `${timeGreeting} ${seasonContext}`;
+    return `${timeGreeting}`;
 };
 
-// 1. FAST RESPONSES (Gemini 3 Flash)
+// 1. FAST RESPONSES (Gemini 3 Flash) - FOREMAN PERSONALITY UPDATE
 export const getForemanCommentary = async (
   gameType: GameType,
   score: number,
   event: 'start' | 'end' | 'milestone'
 ): Promise<ForemanResponse> => {
-  if (!apiKey) return { message: "Vantar API lykil!", mood: 'neutral' };
+  if (!apiKey) return { message: "Hvað er eiginlega í gangi hérna?", mood: 'thinking' };
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const context = getContext();
   
+  // UPDATED PERSONALITY: Dad jokes and unhelpful comments
   const systemInstruction = `Þú ert verkstjóri hjá 'Litlu Gamaleigunni'. 
-  Talaðu stutt og hressilega á íslensku. Hvettu spilarann áfram.
+  Persónuleiki: Þú elskar "pabba-brandara" (dad jokes), orðaleiki og ert oftast frekar óhjálplegur eða kemur með óviðeigandi athugasemdir miðað við aðstæður. 
+  Þú ert gamaldags og kvartar oft undan unga fólkinu eða tækninni, eða segir brandara sem enginn hlær að.
+  Talaðu alltaf á íslensku.
   Samhengi: ${context}`;
 
   let prompt = "";
-  if (event === 'start') prompt = `Nýr leikur: ${gameType}. Kveðja.`;
-  else if (event === 'end') prompt = `Leik lokið: ${gameType}, stig: ${score}. Stutt umsögn.`;
-  else prompt = `Góður árangur í ${gameType}! Hrósaðu.`;
+  if (event === 'start') prompt = `Nýr leikur að byrja: ${gameType}. Segðu lélegan brandara eða komdu með óþarfa athugasemd.`;
+  else if (event === 'end') prompt = `Leik lokið: ${gameType}, stig: ${score}. Komdu með óhjálplega ráðleggingu eða pabba-brandara um niðurstöðuna.`;
+  else prompt = `Spilarinn náði áfanga í ${gameType}. Segðu eitthvað vandræðalegt eða "fyndið".`;
 
   try {
     const response = await ai.models.generateContent({
@@ -48,7 +50,7 @@ export const getForemanCommentary = async (
           type: Type.OBJECT,
           properties: {
             message: { type: Type.STRING },
-            mood: { type: Type.STRING, enum: ['happy', 'neutral', 'excited'] }
+            mood: { type: Type.STRING, enum: ['happy', 'neutral', 'excited', 'thinking'] }
           },
           required: ['message', 'mood']
         }
@@ -56,7 +58,7 @@ export const getForemanCommentary = async (
     });
     return JSON.parse(response.text || '{}') as ForemanResponse;
   } catch (e) {
-    return { message: "Áfram gakk!", mood: 'happy' };
+    return { message: "Heyrðu, veistu af hverju kafarar stökkva afturábak úr bátnum? Ef þeir stækku framfyrir sig myndu þeir detta ofan í bátinn!", mood: 'happy' };
   }
 };
 
@@ -127,7 +129,7 @@ export const sendMessageToGemini = async (message: string, history: { role: stri
   const chat = ai.chats.create({
     model: 'gemini-3-pro-preview',
     config: {
-        systemInstruction: "Þú ert hjálpsamur starfsmaður hjá Litlu Gamaleigunni. Þú svarar spurningum um flokkun, snjómokstur og vinnuvélar á íslensku.",
+        systemInstruction: "Þú ert verkstjóri sem elskar pabba-brandara. Svaraðu spurningum en reyndu alltaf að troða inn lélegum brandara.",
     }
   });
   const response = await chat.sendMessage({ message });
@@ -215,7 +217,7 @@ export const askForemanComplex = async (question: string): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `Þú ert verkstjóri á vinnusvæði. Svaraðu þessari spurningu stuttlega og hressilega á íslensku: ${question}`,
+            contents: `Þú ert verkstjóri á vinnusvæði sem elskar pabba-brandara. Svaraðu þessari spurningu en endaðu á óviðeigandi brandara: ${question}`,
             config: {
                 thinkingConfig: { thinkingBudget: 2048 }
             }
@@ -233,7 +235,7 @@ export const generateBananaReward = async (base64Image: string): Promise<string 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3-pro-image-preview',
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
@@ -253,7 +255,7 @@ export const generateBananaReward = async (base64Image: string): Promise<string 
     }
 };
 
-// 11. LEVEL GENERATOR (Gemini 3 Pro)
+// 11. LEVEL GENERATOR (Gemini 3 Pro) - UPDATED FOR EXTREME WEATHER
 export const generateSandLevel = async (levelIndex: number): Promise<{ name: string, wind: number, speed: number, quota: number, enemyCount: number }> => {
     if (!apiKey) return { name: "Offline Level", wind: 0, speed: 0.5, quota: 500, enemyCount: 1 };
     
@@ -261,13 +263,16 @@ export const generateSandLevel = async (levelIndex: number): Promise<{ name: str
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `Generate a game level for an excavator game. Level index: ${levelIndex}.
-            Create a creative Icelandic name.
-            Wind should be 0-5 (higher is harder).
-            Speed should be 0.1 - 2.0 (speed of moving container).
-            Quota should be score goal (e.g. 200 * level).
-            EnemyCount should be number of flying seagulls (0-5) based on difficulty.
-            `,
+            contents: `Generate a game level for an excavator game set in extreme Icelandic weather. 
+            Level index: ${levelIndex}.
+            
+            1. Name: Create a creative, dramatic, or funny Icelandic name describing the weather or location (e.g., 'Rokið á Sandskeiði', 'Fárviðri í Flatey', 'Brjálað Veður í Bláfjöllum', 'Skítviðri á Skaganum').
+            2. Wind: Scale 0-20. Level 1 is calm (0-2). Level 5+ is stormy. Level 10+ is hurricane force.
+            3. Speed: Container movement speed 0.5 - 4.0.
+            4. Quota: Score goal (e.g., 200 * level).
+            5. EnemyCount: Number of seagulls (0-15). Higher levels have aggressive flocks.
+
+            Return JSON matching the schema.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -285,6 +290,65 @@ export const generateSandLevel = async (levelIndex: number): Promise<{ name: str
         });
         return JSON.parse(response.text || '{}');
     } catch (e) {
-        return { name: `Level ${levelIndex}`, wind: 1, speed: 0.5, quota: levelIndex * 300, enemyCount: Math.min(5, Math.floor(levelIndex / 2)) };
+        return { 
+            name: `Óveður á Stigi ${levelIndex}`, 
+            wind: 2 + levelIndex, 
+            speed: 0.5 + (levelIndex * 0.2), 
+            quota: levelIndex * 300, 
+            enemyCount: Math.min(10, 1 + levelIndex) 
+        };
+    }
+};
+
+// 12. RETRO AVATAR GENERATOR (Broforce Style)
+export const generateRetroAvatar = async (base64Image: string): Promise<string | null> => {
+    if (!apiKey) return null;
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const props = [
+        "holding a flaming taco",
+        "wielding a laser shark",
+        "wearing a giant viking helmet",
+        "dual-wielding baguettes",
+        "riding a tiny dinosaur",
+        "with laser eyes",
+        "wearing pixelated sunglasses",
+        "holding a recycling bin shield",
+        "wearing a cape made of caution tape",
+        "with a massive pixel beard"
+    ];
+    
+    const randomProp = props[Math.floor(Math.random() * props.length)];
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-image-preview',
+            contents: {
+                parts: [
+                    { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+                    { text: `Transform this person into a 'Broforce' style 16-bit arcade pixel art action hero. 
+                    Style: Retro video game, high contrast, vibrant colors, pixelated edges.
+                    Action: The character should be looking heroic and ${randomProp}.
+                    Background: Explosions or retro gradient.
+                    Keep facial hair/glasses from original if present, but make it look like a badass video game character.` }
+                ]
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: "1:1",
+                    imageSize: "1K"
+                }
+            }
+        });
+        
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                return part.inlineData.data;
+            }
+        }
+        return null;
+    } catch (e) {
+        console.error("Avatar generation failed", e);
+        return null;
     }
 };

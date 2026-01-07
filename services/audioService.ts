@@ -1,6 +1,8 @@
+
 class AudioService {
   private ctx: AudioContext | null = null;
   private enabled: boolean = true;
+  private bgMusic: HTMLAudioElement | null = null;
 
   constructor() {
     try {
@@ -9,12 +11,40 @@ class AudioService {
       console.warn("AudioContext not supported");
       this.enabled = false;
     }
+
+    if (typeof window !== 'undefined') {
+        // Retro Arcade Style Music
+        this.bgMusic = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/paza-moduless.mp3');
+        this.bgMusic.loop = true;
+        this.bgMusic.volume = 0.2; // Default volume
+    }
   }
 
   private ensureContext() {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  playMusic() {
+      if (this.bgMusic) {
+          this.bgMusic.play().catch(e => {
+              // Ignore autoplay errors, wait for interaction
+              console.debug("Music autoplay blocked, waiting for interaction");
+          });
+      }
+  }
+
+  pauseMusic() {
+      if (this.bgMusic) {
+          this.bgMusic.pause();
+      }
+  }
+
+  setMusicVolume(volume: number) {
+      if (this.bgMusic) {
+          this.bgMusic.volume = Math.max(0, Math.min(1, volume));
+      }
   }
 
   playTone(freq: number, type: OscillatorType, duration: number, volume: number = 0.1) {

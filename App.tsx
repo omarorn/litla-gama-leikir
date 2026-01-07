@@ -12,7 +12,7 @@ import MapOps from './components/MapOps';
 import AIAssistant from './components/AIAssistant';
 import HighScoreCamera from './components/HighScoreCamera';
 import GameWheel from './components/GameWheel';
-import { Play, ArrowLeft, Grip, ExternalLink } from 'lucide-react';
+import { Play, ArrowLeft, Grip, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { audio } from './services/audioService';
 
 export enum ExtendedGameType {
@@ -28,6 +28,10 @@ export default function App() {
   const [isNight, setIsNight] = useState(false);
   const [isWinter, setIsWinter] = useState(false);
 
+  // Audio State
+  const [volume, setVolume] = useState(0.2);
+  const [isMuted, setIsMuted] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('lg-highscores');
     if (saved) setHighScores(JSON.parse(saved));
@@ -39,7 +43,26 @@ export default function App() {
     };
 
     updateTime();
+
+    // Start music on first interaction to comply with autoplay policy
+    const initAudio = () => {
+        audio.playMusic();
+        document.removeEventListener('click', initAudio);
+        document.removeEventListener('keydown', initAudio);
+    };
+    document.addEventListener('click', initAudio);
+    document.addEventListener('keydown', initAudio);
+
+    return () => {
+        document.removeEventListener('click', initAudio);
+        document.removeEventListener('keydown', initAudio);
+    };
   }, []);
+
+  // Update volume
+  useEffect(() => {
+      audio.setMusicVolume(isMuted ? 0 : volume);
+  }, [volume, isMuted]);
 
   const startGame = (type: GameType | ExtendedGameType) => {
     setActiveGame(type);
@@ -107,8 +130,27 @@ export default function App() {
               </a>
           </div>
           <div className="flex items-center gap-4">
+              {/* Volume Control */}
+              <div className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-full border border-slate-700">
+                  <button onClick={() => setIsMuted(!isMuted)} className="text-slate-400 hover:text-white transition-colors">
+                      {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                  </button>
+                  <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.05" 
+                      value={isMuted ? 0 : volume} 
+                      onChange={(e) => {
+                          setVolume(parseFloat(e.target.value));
+                          if(isMuted && parseFloat(e.target.value) > 0) setIsMuted(false);
+                      }}
+                      className="w-16 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                  />
+              </div>
+
               {gameState === 'playing' && (
-                <div className={`bg-slate-800 px-6 py-2 rounded border ${borderColor}`}>
+                <div className={`hidden sm:block bg-slate-800 px-6 py-2 rounded border ${borderColor}`}>
                   <span className={`${accentColor} font-mono text-xl font-bold`}>STIG: {score.toString().padStart(4, '0')}</span>
                 </div>
               )}
@@ -141,10 +183,16 @@ export default function App() {
              </div>
         ) : (
           <div className="w-full max-w-4xl animate-scale-in">
-                <div className="mb-4">
+                <div className="mb-4 flex justify-between items-center">
                     <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs">
                         <ArrowLeft size={16} /> Til baka í valmynd
                     </button>
+                    {/* Mobile Score */}
+                    {gameState === 'playing' && (
+                        <div className={`sm:hidden bg-slate-800 px-4 py-1 rounded border ${borderColor}`}>
+                            <span className={`${accentColor} font-mono font-bold`}>{score}</span>
+                        </div>
+                    )}
                 </div>
                 
                 {activeGame === GameType.GARBAGE && <GarbageGame onScore={setScore} onGameOver={handleGameOver} />}
@@ -153,33 +201,4 @@ export default function App() {
                 {activeGame === GameType.SAND && <SandGame onScore={setScore} onGameOver={handleGameOver} />}
                 {activeGame === GameType.SCANNER && <TrashScanner onBack={handleBackToMenu} isWinter={isWinter} />}
                 {activeGame === GameType.GEAR && <GearStation onBack={handleBackToMenu} />}
-                {activeGame === GameType.MAPS && <MapOps onBack={handleBackToMenu} />}
-                {activeGame === ExtendedGameType.ASSISTANT && <AIAssistant onBack={handleBackToMenu} />}
-
-             {gameState === 'highscore' && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md z-50 rounded-xl">
-                     <HighScoreCamera onComplete={handleHighScoreComplete} />
-                 </div>
-             )}
-
-             {gameState === 'gameover' && !['SCANNER', 'GEAR', 'MAPS', 'ASSISTANT'].includes(activeGame as string) && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 rounded-xl">
-                     <div className={`bg-slate-900 border-2 ${borderColor} p-10 rounded-2xl text-center shadow-2xl`}>
-                        <h2 className="text-4xl font-black text-white uppercase mb-4">Verki lokið</h2>
-                        <div className={`${accentColor} font-mono text-4xl font-bold mb-8`}>{score} STIG</div>
-                        <div className="flex gap-4">
-                            <button onClick={() => startGame(activeGame)} className="bg-yellow-500 text-black px-8 py-4 rounded-xl font-bold flex items-center gap-2">
-                                <Play size={20} fill="black" /> Reyna aftur
-                            </button>
-                            <button onClick={handleBackToMenu} className="bg-slate-700 text-white px-8 py-4 rounded-xl font-bold">Loka</button>
-                        </div>
-                     </div>
-                 </div>
-             )}
-          </div>
-        )}
-      </main>
-      <Foreman gameType={activeGame as GameType} score={score} gameState={gameState} />
-    </div>
-  );
-}
+                {activeGame === GameType.MAPS && <MapOps onBack={

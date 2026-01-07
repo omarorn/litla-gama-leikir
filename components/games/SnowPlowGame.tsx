@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Snowflake, Car, AlertOctagon, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Lightbulb, Search, Wind } from 'lucide-react';
+import { Snowflake, Car, AlertOctagon, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Lightbulb, Search, Wind, Crown } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface SnowPlowGameProps {
@@ -13,7 +13,7 @@ const GRID_H = 10;
 const TOTAL_CELLS = GRID_W * GRID_H;
 
 type TerrainType = 'asphalt' | 'ice' | 'gravel';
-type HiddenItemType = 'none' | 'mitten' | 'fish' | 'phone' | 'keys' | 'trash';
+type HiddenItemType = 'none' | 'mitten' | 'fish' | 'phone' | 'keys' | 'trash' | 'lg_beanie';
 
 interface Cell {
   id: number;
@@ -31,6 +31,7 @@ const ITEMS_CONFIG: Record<HiddenItemType, { icon: string, points: number, label
     'phone': { icon: '📱', points: 150, label: 'GSM Sími!' },
     'keys': { icon: '🔑', points: 200, label: 'Bíllyklar!' },
     'trash': { icon: '💩', points: 10, label: 'Hundaskítur...' },
+    'lg_beanie': { icon: '👑', points: 500, label: 'Litla Gamaleigan Húfa!' }
 };
 
 const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
@@ -63,7 +64,8 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
           let item: HiddenItemType = 'none';
           if (!isObstacle && Math.random() < 0.05) {
               const r = Math.random();
-              if (r > 0.9) item = 'keys';
+              if (r > 0.98) item = 'lg_beanie'; // Rare LG Item
+              else if (r > 0.9) item = 'keys';
               else if (r > 0.7) item = 'phone';
               else if (r > 0.5) item = 'fish';
               else if (r > 0.3) item = 'mitten';
@@ -201,7 +203,10 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
                       const itemData = ITEMS_CONFIG[cell.hiddenItem];
                       setFoundItem({ label: itemData.label, icon: itemData.icon });
                       onScore(s => s + itemData.points);
-                      audio.playSuccess();
+                      
+                      if (cell.hiddenItem === 'lg_beanie') audio.playWin();
+                      else audio.playSuccess();
+                      
                       setTimeout(() => setFoundItem(null), 2000);
                   } else {
                       onScore(s => s + 10);
@@ -237,12 +242,7 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
       const py = Math.floor(playerPos / GRID_W) * (100 / GRID_H) + (50 / GRID_H);
       
       // Determine headlight cone based on direction
-      let deg = 0;
-      if (direction === 'UP') deg = 0;
-      if (direction === 'RIGHT') deg = 90;
-      if (direction === 'DOWN') deg = 180;
-      if (direction === 'LEFT') deg = 270;
-
+      // 15% clear center, 45% falloff into dark
       return `radial-gradient(circle at ${px}% ${py}%, transparent 15%, rgba(15, 23, 42, 0.95) 45%)`;
   };
 
@@ -273,7 +273,7 @@ const SnowPlowGame: React.FC<SnowPlowGameProps> = ({ onScore, onGameOver }) => {
         {foundItem && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-bounce-in">
                 <div className="bg-yellow-400 text-black px-6 py-4 rounded-xl border-4 border-white shadow-2xl text-center transform rotate-3">
-                    <div className="text-6xl mb-2">{foundItem.icon}</div>
+                    <div className="text-6xl mb-2 animate-bounce">{foundItem.icon}</div>
                     <div className="font-black uppercase tracking-widest text-sm">{foundItem.label}</div>
                     <div className="text-xs font-bold">+STIG</div>
                 </div>

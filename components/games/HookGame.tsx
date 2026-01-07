@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Truck, Wind, ArrowRight, ArrowLeft, XCircle } from 'lucide-react';
+import { Truck, Wind, ArrowRight, ArrowLeft, XCircle, Star } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface HookGameProps {
@@ -18,7 +18,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
   const [truckX, setTruckX] = useState(10);
   const [containerX, setContainerX] = useState(80);
   const [containerDir, setContainerDir] = useState(1);
-  const [containerType, setContainerType] = useState<'normal' | 'heavy' | 'priority'>('normal');
+  const [containerType, setContainerType] = useState<'normal' | 'heavy' | 'priority' | 'lg'>('normal');
   
   const [hookExtending, setHookExtending] = useState(false);
   const [hookLength, setHookLength] = useState(0);
@@ -67,7 +67,8 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
       
       // Randomize type
       const rand = Math.random();
-      if (rand > 0.8) setContainerType('priority');
+      if (rand > 0.95) setContainerType('lg'); // 5% chance for LG Powerup
+      else if (rand > 0.8) setContainerType('priority');
       else if (rand > 0.6) setContainerType('heavy');
       else setContainerType('normal');
 
@@ -131,6 +132,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
               let points = 100;
               if (containerType === 'heavy') points = 150;
               if (containerType === 'priority') points = 300;
+              if (containerType === 'lg') points = 500;
               
               onScore(s => s + points);
               setContainersCollected(c => {
@@ -188,6 +190,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
       switch(containerType) {
           case 'heavy': return 'bg-slate-700 border-slate-900';
           case 'priority': return 'bg-red-600 border-red-800 animate-pulse';
+          case 'lg': return 'bg-yellow-400 border-yellow-600 animate-pulse shadow-[0_0_15px_rgba(234,179,8,0.8)]';
           default: return 'bg-green-600 border-green-800';
       }
   };
@@ -231,11 +234,15 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
         {/* Container */}
         {!hasContainer && (
             <div 
-                className={`absolute bottom-12 w-16 h-12 ${getContainerColor()} border-2 rounded-sm flex items-center justify-center shadow-lg`}
-                style={{ left: `${containerX}%`, transition: 'left 0.1s linear' }}
+                className={`absolute bottom-12 w-16 h-12 ${getContainerColor()} border-2 rounded-sm flex items-center justify-center shadow-lg transition-transform`}
+                style={{ left: `${containerX}%` }}
             >
                 <div className="w-full h-1 bg-white opacity-20 rotate-45"></div>
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 border-2 border-gray-400 rounded-full"></div>
+                {containerType === 'lg' ? (
+                     <span className="text-black font-black text-lg">LG</span>
+                ) : (
+                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 border-2 border-gray-400 rounded-full"></div>
+                )}
             </div>
         )}
 
@@ -263,7 +270,9 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
              <Truck className="w-24 h-16 text-yellow-500 transform scale-x-[-1] filter drop-shadow-lg" />
              
              {hasContainer && (
-                 <div className={`absolute -top-10 left-4 w-16 h-12 ${getContainerColor()} border-2 rounded-sm scale-75 shadow-md`}></div>
+                 <div className={`absolute -top-10 left-4 w-16 h-12 ${getContainerColor()} border-2 rounded-sm scale-75 shadow-md flex items-center justify-center`}>
+                     {containerType === 'lg' && <span className="text-black font-black text-lg">LG</span>}
+                 </div>
              )}
         </div>
 

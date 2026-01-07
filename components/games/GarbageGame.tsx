@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Recycle, Apple, Box, Star, MousePointer2, Keyboard, Check } from 'lucide-react';
+import { Trash2, Recycle, Apple, Box, Star, MousePointer2, Keyboard, Check, Sparkles } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface GarbageGameProps {
@@ -8,7 +8,7 @@ interface GarbageGameProps {
   onGameOver: () => void;
 }
 
-type BinType = 'plast' | 'pappi' | 'matur' | 'almennt';
+type BinType = 'plast' | 'pappi' | 'matur' | 'almennt' | 'powerup';
 
 interface ItemData {
   name: string;
@@ -21,6 +21,17 @@ interface FallingItem extends ItemData {
   x: number;
   y: number;
   speed: number;
+  rotation: number;
+  crumpleX: number;
+  crumpleY: number;
+}
+
+interface FeedbackItem {
+  id: number;
+  x: number;
+  y: number;
+  image: string;
+  type: 'correct' | 'incorrect' | 'powerup';
 }
 
 interface Mistake {
@@ -29,7 +40,7 @@ interface Mistake {
   correctBin: BinType;
 }
 
-// More items added for variety
+// Updated list with "trashed" aesthetic in mind
 const TRASH_ITEMS: ItemData[] = [
     // Pappi
     { name: 'G-Mjólk', type: 'pappi', image: 'https://placehold.co/100x100/0054a6/ffffff?text=G-Mjólk' },
@@ -66,6 +77,12 @@ const TRASH_ITEMS: ItemData[] = [
     { name: 'Eyrnapinni', type: 'almennt', image: 'https://placehold.co/100x100/f1f5f9/000000?text=Pinni' },
 ];
 
+const POWERUP_ITEM: ItemData = {
+    name: 'LG Gull',
+    type: 'powerup',
+    image: 'https://placehold.co/100x100/fbbf24/000000?text=LG'
+};
+
 const SHIFTS = [
     { name: "Morgunvakt", quota: 10, speedMod: 1.0, bg: "bg-sky-100" },
     { name: "Eftirmiðdagur", quota: 15, speedMod: 1.3, bg: "bg-orange-50" },
@@ -75,8 +92,9 @@ const SHIFTS = [
 
 const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   const [items, setItems] = useState<FallingItem[]>([]);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [activeBin, setActiveBin] = useState<BinType>('almennt');
-  const [animatingBin, setAnimatingBin] = useState<BinType | null>(null); // State for bin animation
+  const [animatingBin, setAnimatingBin] = useState<BinType | null>(null);
   const [mistakes, setMistakes] = useState<Mistake[]>([]);
   const [showReport, setShowReport] = useState(false);
   
@@ -112,14 +130,21 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
   }, []);
 
   const spawnItem = (speedMult: number) => {
-    const data = TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
+    // 5% chance for powerup
+    const isPowerup = Math.random() < 0.05;
+    const data = isPowerup ? POWERUP_ITEM : TRASH_ITEMS[Math.floor(Math.random() * TRASH_ITEMS.length)];
+    
     const id = Date.now() + Math.random();
+    
     setItems(prev => [...prev, { 
         ...data, 
         id, 
         x: 50, 
         y: 0, 
-        speed: (0.3 + Math.random() * 0.2) * speedMult 
+        speed: (0.3 + Math.random() * 0.2) * speedMult,
+        rotation: Math.random() * 360,
+        crumpleX: 0.8 + Math.random() * 0.2, // Random scale X for crumple effect
+        crumpleY: 0.8 + Math.random() * 0.2  // Random scale Y
     }]);
   };
 
@@ -158,20 +183,42 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
       setItems(prevItems => {
         return prevItems.map(item => ({
           ...item,
-          y: item.y + item.speed
+          y: item.y + item.speed,
+          rotation: item.rotation + (item.speed * 2) // Rotate as it falls
         })).filter(item => {
            // Hit detection zone
-           if (item.y > 82) { 
-             if (item.type === activeBin) {
+           if (item.y > 82) {
+             const feedbackId = Date.now() + Math.random();
+             const isPowerup = item.type === 'powerup';
+             // Powerup counts as correct for ANY bin
+             const isCorrect = isPowerup || item.type === activeBin;
+             
+             // VISUAL FEEDBACK SPAWN
+             setFeedbackItems(prev => [...prev, {
+                 id: feedbackId,
+                 x: item.x,
+                 y: item.y,
+                 image: item.image,
+                 type: isPowerup ? 'powerup' : (isCorrect ? 'correct' : 'incorrect')
+             }]);
+             
+             // Remove feedback after animation
+             setTimeout(() => {
+                 setFeedbackItems(prev => prev.filter(i => i.id !== feedbackId));
+             }, 500);
+
+             if (isCorrect) {
                // SUCCESS
-               const points = 10 + (combo * 2);
+               const points = isPowerup ? 50 : (10 + (combo * 2));
                scoreRef.current += points;
                onScore(scoreRef.current);
                setShiftProgress(p => p + 1);
                setCombo(c => Math.min(10, c + 1));
-               audio.playTrashCorrect();
                
-               // Trigger Animation
+               if (isPowerup) audio.playWin();
+               else audio.playTrashCorrect();
+               
+               // Trigger Bin Animation
                setAnimatingBin(activeBin);
                setTimeout(() => setAnimatingBin(null), 200);
 
@@ -218,6 +265,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
       case 'plast': return <Recycle className="text-orange-200 w-8 h-8" />;
       case 'pappi': return <Box className="text-blue-200 w-8 h-8" />;
       case 'matur': return <Apple className="text-green-200 w-8 h-8" />;
+      default: return null;
     }
   };
 
@@ -227,6 +275,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           case 'plast': return 'bg-orange-500 border-orange-700'; 
           case 'pappi': return 'bg-blue-600 border-blue-800';
           case 'matur': return 'bg-green-600 border-green-800';
+          default: return 'bg-slate-500';
       }
   };
 
@@ -236,6 +285,7 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           case 'plast': return 'Plast (1)';
           case 'pappi': return 'Pappi (2)';
           case 'matur': return 'Matur (3)';
+          case 'powerup': return 'LG Power';
       }
   };
 
@@ -285,6 +335,23 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
 
   return (
     <div className={`relative w-full h-[500px] ${currentShift.bg} transition-colors duration-1000 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner`} ref={containerRef}>
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-15deg); }
+          75% { transform: rotate(15deg); }
+        }
+        .animate-shake-custom {
+          animation: shake 0.4s ease-in-out;
+        }
+        @keyframes pop-fade {
+          0% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+        .animate-pop {
+          animation: pop-fade 0.5s ease-out forwards;
+        }
+      `}</style>
       
       {/* HUD */}
       <div className="absolute top-4 left-0 w-full px-4 flex justify-between items-start z-20 pointer-events-none">
@@ -352,12 +419,67 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
             transform: 'translateX(-50%)' 
           }}
         >
-          <div className="bg-white px-2 py-0.5 rounded shadow-sm text-[9px] font-bold border border-gray-200 whitespace-nowrap mb-1 opacity-80">
-              {item.name}
+          {item.type !== 'powerup' && (
+              <div className="bg-white px-2 py-0.5 rounded shadow-sm text-[9px] font-bold border border-gray-200 whitespace-nowrap mb-1 opacity-80">
+                  {item.name}
+              </div>
+          )}
+          {/* Trashed Item Visuals */}
+          <div 
+            className={`
+                w-16 h-16 flex items-center justify-center transition-transform
+                ${item.type === 'powerup' ? 'animate-pulse drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]' : 'filter drop-shadow-lg'}
+            `}
+            style={{
+                transform: item.type === 'powerup' 
+                    ? `rotate(${item.rotation * 0.1}deg)` 
+                    : `rotate(${item.rotation}deg) scale(${item.crumpleX}, ${item.crumpleY})`,
+                filter: item.type === 'powerup' ? 'none' : 'contrast(1.2) brightness(0.95)'
+            }}
+          >
+             {item.type === 'powerup' ? (
+                 <div className="w-14 h-14 bg-yellow-400 border-4 border-black rounded-lg flex items-center justify-center shadow-lg transform rotate-3">
+                     <span className="font-black text-black text-2xl">LG</span>
+                     <Sparkles className="absolute -top-2 -right-2 text-white animate-spin-slow" size={20} />
+                 </div>
+             ) : (
+                <div className="relative w-full h-full bg-white/50 p-1 rounded-md backdrop-blur-sm overflow-hidden border border-white/40">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-contain mix-blend-multiply" />
+                    {/* Crinkle Overlay */}
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/crumpled-paper.png')] opacity-30 mix-blend-overlay"></div>
+                </div>
+             )}
           </div>
-          <div className="w-16 h-16 rounded-lg flex items-center justify-center filter drop-shadow-lg transform hover:scale-110 transition-transform bg-white/50 p-1 backdrop-blur-sm">
-             <img src={item.image} alt={item.name} className="w-full h-full object-contain rounded-md" />
-          </div>
+        </div>
+      ))}
+
+      {/* Feedback Items Animation */}
+      {feedbackItems.map(item => (
+        <div 
+          key={item.id} 
+          className="absolute flex flex-col items-center justify-center pointer-events-none z-30"
+          style={{ 
+            left: `${item.x}%`, 
+            top: `${item.y}%`, 
+            transform: 'translateX(-50%)' 
+          }}
+        >
+          {item.type === 'powerup' ? (
+               <div className="text-4xl font-black text-yellow-400 animate-pop drop-shadow-[0_4px_0_rgba(0,0,0,1)] stroke-black">
+                  +50
+               </div>
+          ) : (
+              <>
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center p-1 backdrop-blur-sm ${item.type === 'correct' ? 'bg-green-400/50 animate-pop' : 'bg-red-400/50 animate-shake-custom opacity-70'}`}>
+                   <img src={item.image} className="w-full h-full object-contain rounded-md" />
+                </div>
+                {item.type === 'correct' && (
+                    <div className="absolute -top-10 text-4xl font-black text-green-500 animate-pop drop-shadow-lg">
+                        +10
+                    </div>
+                )}
+              </>
+          )}
         </div>
       ))}
 

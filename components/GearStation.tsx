@@ -129,7 +129,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     <div className="w-full max-w-2xl mx-auto bg-slate-900 border-2 border-slate-700 rounded-xl overflow-hidden shadow-2xl text-white flex flex-col max-h-[90vh]">
         <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between shrink-0">
             <h2 className="text-xl font-bold text-yellow-400 uppercase tracking-widest flex items-center gap-2">
-                <Wand2 size={20} /> Græjustöðin
+                <Wand2 size={20} /> Græjustöðin <span className="text-xs bg-yellow-500 text-black px-1 rounded">PRO</span>
             </h2>
             <button onClick={onBack} className="text-slate-400 hover:text-white">Loka</button>
         </div>
@@ -208,7 +208,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <div className="absolute inset-0 bg-black/80 z-10 flex flex-col items-center justify-center">
                                     <RefreshCw className="animate-spin text-yellow-400 mb-2" size={40} />
                                     <span className="animate-pulse font-mono text-yellow-400 font-bold">Galdrar í gangi...</span>
-                                    <span className="text-xs text-slate-400 mt-2">Gemini 3 Pro að vinna...</span>
+                                    <span className="text-xs text-slate-400 mt-2">Gemini 3 Pro Image að vinna...</span>
                                 </div>
                             )}
                             <img src={photo} className="w-full h-full object-cover" alt="Worker" />
