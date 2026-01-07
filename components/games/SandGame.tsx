@@ -1,22 +1,35 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Wind, Trophy, CornerDownLeft, ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from 'lucide-react';
+import { Wind, Trophy, CornerDownLeft, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Bird, Loader2, BrainCircuit } from 'lucide-react';
 import { audio } from '../../services/audioService';
+import { generateSandLevel } from '../../services/geminiService';
 
 interface SandGameProps {
   onScore: React.Dispatch<React.SetStateAction<number>>;
   onGameOver: () => void;
 }
 
-const LEVELS = [
-    { id: 1, name: "Nýliði", wind: 0, moving: false, quota: 200, speed: 0 },
-    { id: 2, name: "Vanur", wind: 0, moving: true, quota: 400, speed: 0.2 },
-    { id: 3, name: "Fagmaður", wind: 1, moving: true, quota: 600, speed: 0.5 },
-    { id: 4, name: "Meistari", wind: 3, moving: true, quota: 1000, speed: 0.8 }
-];
+interface LevelData {
+    name: string;
+    wind: number;
+    speed: number;
+    quota: number;
+    enemyCount: number;
+}
+
+interface Enemy {
+    id: number;
+    x: number;
+    y: number;
+    speed: number;
+    dir: number;
+}
 
 const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
-  const [levelIdx, setLevelIdx] = useState(0);
+  const [levelIdx, setLevelIdx] = useState(1);
+  const [levelData, setLevelData] = useState<LevelData | null>(null);
+  const [loadingLevel, setLoadingLevel] = useState(true);
+  
   const [currentScore, setCurrentScore] = useState(0);
   
   const [rotation, setRotation] = useState(0); // 0 = Left (Sand), 180 = Right (Bin)
@@ -28,18 +41,45 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
   const [containerDir, setContainerDir] = useState(1);
   
   const [particles, setParticles] = useState<{id: number, x: number, y: number, color: string}[]>([]);
+  const [enemies, setEnemies] = useState<Enemy[]>([]);
   
-  const level = LEVELS[levelIdx];
   const keysPressed = useRef<Record<string, boolean>>({});
   const requestRef = useRef<number>(0);
+
+  // Load Level
+  useEffect(() => {
+      const loadLevel = async () => {
+          setLoadingLevel(true);
+          const data = await generateSandLevel(levelIdx);
+          setLevelData(data);
+          
+          // Spawn Enemies
+          const newEnemies: Enemy[] = [];
+          for(let i=0; i<data.enemyCount; i++) {
+              newEnemies.push({
+                  id: Math.random(),
+                  x: Math.random() * 300,
+                  y: 50 + Math.random() * 100,
+                  speed: 0.5 + (Math.random() * 0.5) + (levelIdx * 0.1),
+                  dir: Math.random() > 0.5 ? 1 : -1
+              });
+          }
+          setEnemies(newEnemies);
+          setTimeLeft(60 + (levelIdx * 5));
+          setCurrentScore(0);
+          setLoadingLevel(false);
+      };
+      loadLevel();
+  }, [levelIdx]);
 
   // Input Handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { keysPressed.current[e.key] = true; };
     const handleKeyUp = (e: KeyboardEvent) => { keysPressed.current[e.key] = false; };
     
-    // Space action
     const handleAction = (e: KeyboardEvent) => {
+        if (!levelData || loadingLevel) return;
+
         if (e.key === ' ' || e.key === 'Enter') {
              if (rotation < 30 && armHeight > 70 && !hasSand) {
                   // DIG
@@ -47,42 +87,20 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
                   audio.playClick();
                   spawnParticles(20, 100, 'bg-yellow-700'); // Dirt
              } else if (rotation > 150 && armHeight > 20 && hasSand) {
-                  // DUMP CHECK
-                  // Calculate tip position
-                  // Simple check: is rotation near 180?
-                  // And is container near the drop zone?
-                  
-                  // Container is at `right: containerPos`. 
-                  // Visual right side is ~80-90% of screen width.
-                  // Let's approximate: 
-                  // 180deg is fully right.
-                  
-                  // We need to match rotation to container position? 
-                  // Actually, container moves left/right in the "Bin Zone".
-                  // Let's just say if rotated fully right (>160) and dump, we check if container is currently reachable?
-                  // For simplicity: If rotation > 160, we are "over the zone". 
-                  // The container moves physically.
-                  // Let's simplify: If moving, the user must time it so the bucket is "over" the container.
-                  // But the view is 2D side/perspective. 
-                  // Let's assume the container is always "at the destination" but moves slightly for visual difficulty?
-                  // Or actually implement collision:
-                  
-                  // In this 2.5D view, rotation maps to X. 
-                  // Container is at X = ScreenWidth - ContainerPos - Width.
-                  // Let's keep it simple: If rotation > 160, you hit the "Drop Zone".
-                  
-                  setHasSand(false); // Dump
+                  // DUMP
+                  setHasSand(false);
                   spawnParticles(15, 60, 'bg-yellow-500'); // Sand
                   
                   // Score calculation
                   onScore(s => {
-                      const newScore = s + 50 + (level.id * 10);
-                      setCurrentScore(cs => cs + 50 + (level.id * 10));
+                      const points = 50 + (levelIdx * 10);
+                      const newScore = s + points;
+                      setCurrentScore(cs => cs + points);
                       return newScore;
                   });
                   audio.playSuccess();
              } else if (hasSand) {
-                 // Wasted sand
+                 // Wasted
                  setHasSand(false);
                  spawnParticles(10, 60, 'bg-yellow-500');
                  audio.playError();
@@ -99,41 +117,71 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('keydown', handleAction);
     };
-  }, [rotation, armHeight, hasSand, level, onScore]);
+  }, [rotation, armHeight, hasSand, levelData, loadingLevel, onScore, levelIdx]);
 
   // Game Loop
   useEffect(() => {
       const animate = () => {
-          // Movement
+          if (!levelData || loadingLevel) {
+              requestRef.current = requestAnimationFrame(animate);
+              return;
+          }
+
+          // Player Movement
           if (keysPressed.current['ArrowLeft']) setRotation(r => Math.max(0, r - 2));
           if (keysPressed.current['ArrowRight']) setRotation(r => Math.min(180, r + 2));
           if (keysPressed.current['ArrowUp']) setArmHeight(h => Math.max(0, h - 2));
           if (keysPressed.current['ArrowDown']) setArmHeight(h => Math.min(100, h + 2));
           
           // Wind Effect
-          if (level.wind > 0 && hasSand) {
-              setRotation(r => Math.min(180, Math.max(0, r + (Math.random() - 0.5) * level.wind)));
+          if (levelData.wind > 0 && hasSand) {
+              setRotation(r => Math.min(180, Math.max(0, r + (Math.random() - 0.5) * levelData.wind)));
           }
 
           // Container Movement
-          if (level.moving) {
+          if (levelData.speed > 0) {
               setContainerPos(prev => {
-                  let next = prev + (level.speed * containerDir);
+                  let next = prev + (levelData.speed * containerDir);
                   if (next > 40 || next < 0) {
                       setContainerDir(d => d * -1);
                       next = prev;
                   }
                   return next;
               });
-          } else {
-              setContainerPos(10);
           }
+
+          // Enemy Logic
+          setEnemies(prev => prev.map(e => {
+              let nextX = e.x + (e.speed * e.dir);
+              if (nextX > 400 || nextX < 0) {
+                  e.dir *= -1;
+              }
+              
+              // Simple Collision Check
+              // Map rotation (0-180) roughly to X (0-400)
+              // 0 deg = left (50px), 180 deg = right (350px)
+              // Arm height affects Y (0 = high, 100 = low)
+              const bucketX = 50 + (rotation / 180) * 300;
+              const bucketY = 100 + (armHeight / 100) * 100;
+              
+              const dist = Math.sqrt(Math.pow(nextX - bucketX, 2) + Math.pow(e.y - bucketY, 2));
+              
+              if (dist < 30) {
+                  // HIT
+                  audio.playError();
+                  onScore(s => Math.max(0, s - 5));
+                  // Teleport bird away
+                  nextX = Math.random() > 0.5 ? 0 : 400;
+              }
+
+              return { ...e, x: nextX, dir: e.dir };
+          }));
           
           requestRef.current = requestAnimationFrame(animate);
       };
       requestRef.current = requestAnimationFrame(animate);
       return () => cancelAnimationFrame(requestRef.current);
-  }, [level, containerDir, hasSand]);
+  }, [levelData, containerDir, hasSand, loadingLevel, rotation, armHeight, onScore]);
 
   // Particles
   const spawnParticles = (count: number, xStart: number, colorClass: string) => {
@@ -141,17 +189,19 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
       for(let i=0; i<count; i++) {
           newParts.push({
               id: Math.random(),
-              x: Math.random() * 40 + (rotation > 90 ? 250 : 50), // Rough visual mapping
+              x: Math.random() * 40 + (rotation > 90 ? 250 : 50),
               y: 200,
               color: colorClass
           });
       }
       setParticles(p => [...p, ...newParts]);
-      setTimeout(() => setParticles([]), 1000); // Cleanup
+      setTimeout(() => setParticles([]), 1000);
   };
 
   // Timer & Level Up
   useEffect(() => {
+      if (loadingLevel) return;
+      
       const timer = setInterval(() => {
           setTimeLeft(t => {
               if (t <= 1) {
@@ -164,26 +214,36 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
       }, 1000);
       
       return () => clearInterval(timer);
-  }, [onGameOver]);
+  }, [onGameOver, loadingLevel]);
 
   useEffect(() => {
-      if (currentScore >= level.quota && levelIdx < LEVELS.length - 1) {
+      if (levelData && currentScore >= levelData.quota) {
           audio.playWin();
           setLevelIdx(l => l + 1);
-          setCurrentScore(0);
-          setTimeLeft(prev => prev + 30); // Bonus time
       }
-  }, [currentScore, level.quota, levelIdx]);
+  }, [currentScore, levelData]);
+
+  if (loadingLevel) {
+      return (
+          <div className="w-full h-[400px] bg-amber-900/90 rounded-xl flex flex-col items-center justify-center text-white border-4 border-amber-600">
+              <BrainCircuit className="animate-pulse text-yellow-400 mb-4" size={64} />
+              <h2 className="text-2xl font-black uppercase tracking-widest mb-2">Hanna nýtt svæði...</h2>
+              <p className="text-amber-200 font-mono animate-pulse">Gemini 3 Pro er að reikna vindhraða...</p>
+          </div>
+      );
+  }
+
+  if (!levelData) return null;
 
   return (
     <div className="relative w-full h-[400px] bg-amber-50 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner select-none">
        {/* UI / HUD */}
        <div className="absolute top-4 left-4 right-4 flex justify-between z-30">
            <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-lg shadow border border-amber-200">
-               <div className="text-xs font-bold text-amber-600 uppercase">Verkefni</div>
-               <div className="text-xl font-black text-slate-800">{level.name}</div>
+               <div className="text-xs font-bold text-amber-600 uppercase">Borð {levelIdx}</div>
+               <div className="text-xl font-black text-slate-800">{levelData.name}</div>
                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-1">
-                 <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, (currentScore/level.quota)*100)}%` }}></div>
+                 <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${Math.min(100, (currentScore/levelData.quota)*100)}%` }}></div>
                </div>
            </div>
            <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-lg shadow font-mono font-bold text-2xl text-slate-700 border border-slate-200">
@@ -192,9 +252,9 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
        </div>
        
        {/* Wind Indicator */}
-       {level.wind > 0 && (
+       {levelData.wind > 0 && (
            <div className="absolute top-20 right-4 text-blue-400 animate-pulse flex items-center gap-2 font-bold z-20">
-               <Wind size={24} /> <span className="text-sm">Hvasst!</span>
+               <Wind size={24} /> <span className="text-sm">Vindur: {levelData.wind}</span>
            </div>
        )}
 
@@ -202,6 +262,13 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
        <div className="absolute bottom-0 left-0 w-48 h-32 bg-yellow-600/20 rounded-tr-full z-0"></div>
        <div className="absolute bottom-0 left-0 w-32 h-24 bg-yellow-600 rounded-tr-full z-0 border-t-4 border-yellow-700 shadow-inner"></div>
        
+       {/* Enemies */}
+       {enemies.map(e => (
+           <div key={e.id} className="absolute transition-none z-10 text-slate-700" style={{ left: e.x, top: e.y, transform: `scaleX(${e.dir * -1})` }}>
+               <Bird className="animate-bounce" size={24} />
+           </div>
+       ))}
+
        {/* Particles */}
        {particles.map(p => (
            <div 

@@ -252,3 +252,39 @@ export const generateBananaReward = async (base64Image: string): Promise<string 
         return null;
     }
 };
+
+// 11. LEVEL GENERATOR (Gemini 3 Pro)
+export const generateSandLevel = async (levelIndex: number): Promise<{ name: string, wind: number, speed: number, quota: number, enemyCount: number }> => {
+    if (!apiKey) return { name: "Offline Level", wind: 0, speed: 0.5, quota: 500, enemyCount: 1 };
+    
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: `Generate a game level for an excavator game. Level index: ${levelIndex}.
+            Create a creative Icelandic name.
+            Wind should be 0-5 (higher is harder).
+            Speed should be 0.1 - 2.0 (speed of moving container).
+            Quota should be score goal (e.g. 200 * level).
+            EnemyCount should be number of flying seagulls (0-5) based on difficulty.
+            `,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        name: { type: Type.STRING },
+                        wind: { type: Type.NUMBER },
+                        speed: { type: Type.NUMBER },
+                        quota: { type: Type.NUMBER },
+                        enemyCount: { type: Type.NUMBER }
+                    },
+                    required: ['name', 'wind', 'speed', 'quota', 'enemyCount']
+                }
+            }
+        });
+        return JSON.parse(response.text || '{}');
+    } catch (e) {
+        return { name: `Level ${levelIndex}`, wind: 1, speed: 0.5, quota: levelIndex * 300, enemyCount: Math.min(5, Math.floor(levelIndex / 2)) };
+    }
+};
