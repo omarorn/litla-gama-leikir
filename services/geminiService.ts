@@ -168,12 +168,12 @@ export const transcribeAudioFromBase64 = async (base64Audio: string): Promise<st
     }
 };
 
-// 7. IMAGE EDITING (Gemini 2.5 Flash Image - Standard for Editing)
+// 7. IMAGE EDITING (Gemini 3 Pro Image - High Quality)
 export const editWorkerImage = async (base64Image: string, promptText: string): Promise<string | null> => {
   if (!apiKey) return null;
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-     const model = "gemini-2.5-flash-image";
+     const model = "gemini-3-pro-image-preview";
      const response = await ai.models.generateContent({
        model,
        contents: {
@@ -233,7 +233,7 @@ export const generateBananaReward = async (base64Image: string): Promise<string 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
+            model: 'gemini-3-pro-preview',
             contents: {
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: base64Image } },

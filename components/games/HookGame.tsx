@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { Truck, Wind, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Truck, Wind, ArrowRight, ArrowLeft, XCircle } from 'lucide-react';
 import { audio } from '../../services/audioService';
 
 interface HookGameProps {
@@ -77,7 +78,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
     setTruckX(prev => Math.max(0, Math.min(90, prev + dir)));
   }, [hookExtending, hasContainer]);
 
-  const cancelHook = useCallback(() => {
+  const releaseHook = useCallback(() => {
     if (hookExtending) {
         setHookExtending(false);
         audio.playClick();
@@ -90,19 +91,19 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
       if (e.key === 'ArrowRight') moveTruck(4);
       if (e.key === ' ' || e.key === 'Enter') {
         if (hookExtending) {
-            cancelHook();
+            releaseHook();
         } else if (!hasContainer) {
             setHookExtending(true);
             audio.playClick();
         }
       }
-      if (e.key === 'Escape') {
-          cancelHook();
+      if (e.key === 'Escape' || e.key === 'r' || e.key === 'R') {
+          releaseHook();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [moveTruck, hookExtending, hasContainer, cancelHook]);
+  }, [moveTruck, hookExtending, hasContainer, releaseHook]);
 
   // Hook Logic Loop
   useEffect(() => {
@@ -212,6 +213,18 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
         <div className="absolute top-10 left-10 text-white/40 animate-pulse"><Wind size={64} /></div>
         <div className="absolute top-20 right-20 text-white/30"><Wind size={48} /></div>
 
+        {/* Release Button (Strategic) */}
+        <button 
+            onClick={releaseHook}
+            disabled={!hookExtending}
+            className={`absolute top-16 right-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider border-2 shadow-md transition-all
+            ${hookExtending 
+                ? 'bg-red-500 text-white border-red-700 hover:bg-red-600 cursor-pointer animate-pulse' 
+                : 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'}`}
+        >
+            <XCircle size={14} /> Losa Krók (R)
+        </button>
+
         {/* Ground */}
         <div className="absolute bottom-0 w-full h-12 bg-slate-700 border-t-4 border-slate-600"></div>
 
@@ -265,7 +278,7 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
                 <div className="w-px h-6 bg-slate-300"></div>
                 <div className="flex items-center gap-2">
                     <span className="bg-slate-200 border border-slate-400 rounded px-3 py-0.5 text-xs font-black min-w-[50px] text-center">SPACE</span>
-                    <span className="text-xs font-bold uppercase">Krókur / Sleppa</span>
+                    <span className="text-xs font-bold uppercase">Krókur</span>
                 </div>
             </div>
         </div>
@@ -273,11 +286,11 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
         {/* Mobile Controls Overlay (Interactive) */}
         <div className="absolute bottom-0 left-0 w-full h-24 z-40 md:hidden flex justify-between items-center px-4">
              <button onTouchStart={() => moveTruck(-4)} onClick={() => moveTruck(-4)} className="bg-white/50 w-16 h-16 rounded-full flex items-center justify-center text-3xl opacity-0">L</button>
-             <button onClick={() => !hookExtending && !hasContainer ? setHookExtending(true) : cancelHook()} className="bg-white/50 w-24 h-24 rounded-full opacity-0">ACT</button>
+             <button onClick={() => !hookExtending && !hasContainer ? setHookExtending(true) : releaseHook()} className="bg-white/50 w-24 h-24 rounded-full opacity-0">ACT</button>
              <button onTouchStart={() => moveTruck(4)} onClick={() => moveTruck(4)} className="bg-white/50 w-16 h-16 rounded-full flex items-center justify-center text-3xl opacity-0">R</button>
         </div>
 
-        {/* Mobile Controls Visuals (Only for mobile but using the styled approach above) */}
+        {/* Mobile Controls Visuals */}
         <div className="absolute bottom-2 left-0 w-full flex justify-center gap-4 items-end pb-2 md:hidden pointer-events-auto">
              <button onClick={() => moveTruck(-10)} className="bg-white/80 p-4 rounded-full font-bold shadow-lg active:bg-slate-200"><ArrowLeft /></button>
              
@@ -285,10 +298,10 @@ const HookGame: React.FC<HookGameProps> = ({ onScore, onGameOver }) => {
                  <button onClick={() => !hookExtending && !hasContainer && setHookExtending(true)} className="bg-yellow-400 px-8 py-4 rounded-full font-black shadow-lg border-2 border-black active:scale-95 transition-transform">KRÓKUR</button>
                  {hookExtending && (
                     <button 
-                        onClick={cancelHook}
+                        onClick={releaseHook}
                         className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full font-bold text-xs shadow-lg border-2 border-white animate-bounce"
                     >
-                        SLEPPA
+                        LOSA
                     </button>
                  )}
              </div>

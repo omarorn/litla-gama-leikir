@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, Wand2, RefreshCw, History, Trash2, ArrowRight, Save } from 'lucide-react';
+import { Camera, Wand2, RefreshCw, History, Trash2, Save, GripVertical } from 'lucide-react';
 import { editWorkerImage } from '../services/geminiService';
 
 interface HistoryItem {
@@ -22,6 +22,8 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [sliderPos, setSliderPos] = useState(50);
+  const sliderRef = useRef<HTMLDivElement>(null);
 
   // Load history on mount
   useEffect(() => {
@@ -75,6 +77,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       if (result) {
           const editedBase64 = `data:image/jpeg;base64,${result}`;
           setEditedPhoto(editedBase64);
+          setSliderPos(50); // Reset slider to center
           
           // Save to history
           const newItem: HistoryItem = {
@@ -102,7 +105,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       setPhoto(item.original);
       setEditedPhoto(item.edited);
       setPrompt(item.prompt);
-      // Scroll to top
+      setSliderPos(50);
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -111,6 +114,15 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           setHistory([]);
           localStorage.removeItem('gear_history');
       }
+  };
+
+  // Slider interaction
+  const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
+      if (!sliderRef.current) return;
+      const rect = sliderRef.current.getBoundingClientRect();
+      const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const pos = ((x - rect.left) / rect.width) * 100;
+      setSliderPos(Math.min(100, Math.max(0, pos)));
   };
 
   return (
@@ -143,26 +155,49 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {/* BEFORE / AFTER VIEW */}
+                    {/* BEFORE / AFTER SLIDER */}
                     {editedPhoto ? (
                         <div className="space-y-2 animate-fade-in">
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                <Save size={14} /> Samanburður
+                            <div className="flex items-center justify-between text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                <span className="flex items-center gap-2"><Save size={14} /> Samanburður</span>
+                                <span className="text-[10px] text-slate-500">Dragðu sleðann</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <span className="text-xs text-slate-500 uppercase font-bold">Fyrir</span>
-                                    <div className="aspect-square bg-black rounded-lg overflow-hidden border border-slate-600">
-                                        <img src={photo} className="w-full h-full object-cover opacity-80" alt="Original" />
+                            
+                            <div 
+                                ref={sliderRef}
+                                className="relative aspect-square w-full rounded-xl overflow-hidden border-2 border-yellow-500/50 cursor-col-resize shadow-2xl touch-none group select-none"
+                                onMouseMove={(e) => e.buttons === 1 && handleDrag(e)}
+                                onTouchMove={handleDrag}
+                                onClick={handleDrag}
+                            >
+                                {/* ORIGINAL (BACKGROUND) */}
+                                <img src={photo} className="absolute inset-0 w-full h-full object-cover filter grayscale-[30%]" alt="Original" />
+                                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs font-bold text-white pointer-events-none">
+                                    FYRIR
+                                </div>
+
+                                {/* EDITED (FOREGROUND - CLIPPED) */}
+                                <div 
+                                    className="absolute inset-0 w-full h-full overflow-hidden"
+                                    style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                                >
+                                    <img src={editedPhoto} className="absolute inset-0 w-full h-full object-cover" alt="Edited" />
+                                    <div className="absolute top-4 right-4 bg-yellow-400/90 text-black px-2 py-1 rounded text-xs font-bold pointer-events-none">
+                                        EFTIR
                                     </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <span className="text-xs text-yellow-500 uppercase font-bold">Eftir</span>
-                                    <div className="aspect-square bg-black rounded-lg overflow-hidden border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]">
-                                        <img src={editedPhoto} className="w-full h-full object-cover" alt="Edited" />
+
+                                {/* SLIDER HANDLE */}
+                                <div 
+                                    className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] z-20 pointer-events-none"
+                                    style={{ left: `${sliderPos}%` }}
+                                >
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-slate-900 rounded-full p-1 shadow-lg border-2 border-slate-900">
+                                        <GripVertical size={16} />
                                     </div>
                                 </div>
                             </div>
+
                             <div className="bg-slate-800/50 p-3 rounded border border-slate-700 text-sm text-yellow-200/80 italic text-center">
                                 "{prompt}"
                             </div>
@@ -173,6 +208,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <div className="absolute inset-0 bg-black/80 z-10 flex flex-col items-center justify-center">
                                     <RefreshCw className="animate-spin text-yellow-400 mb-2" size={40} />
                                     <span className="animate-pulse font-mono text-yellow-400 font-bold">Galdrar í gangi...</span>
+                                    <span className="text-xs text-slate-400 mt-2">Gemini 3 Pro að vinna...</span>
                                 </div>
                             )}
                             <img src={photo} className="w-full h-full object-cover" alt="Worker" />
@@ -236,7 +272,7 @@ const GearStation: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             )}
             
             <p className="text-[10px] text-slate-600 mt-8 text-center uppercase tracking-widest">
-                Knúið af Gemini 2.5 Flash Image Editing
+                Knúið af Gemini 3 Pro Image
             </p>
         </div>
         <canvas ref={canvasRef} className="hidden" />

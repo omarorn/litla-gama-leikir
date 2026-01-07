@@ -236,7 +236,20 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
   if (!levelData) return null;
 
   return (
-    <div className="relative w-full h-[400px] bg-amber-50 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner select-none">
+    <div className="relative w-full h-[400px] bg-slate-900 rounded-xl overflow-hidden border-4 border-slate-300 shadow-inner select-none">
+       {/* Background Image */}
+       <div className="absolute inset-0 z-0">
+           <img 
+               src="https://photos.app.goo.gl/q64akRVh566bQ6EUA" 
+               className="w-full h-full object-cover opacity-60"
+               onError={(e) => {
+                   e.currentTarget.style.display = 'none';
+               }}
+               alt="Background"
+           />
+           <div className="absolute inset-0 bg-slate-900/40"></div>
+       </div>
+
        {/* UI / HUD */}
        <div className="absolute top-4 left-4 right-4 flex justify-between z-30">
            <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-lg shadow border border-amber-200">
@@ -258,13 +271,13 @@ const SandGame: React.FC<SandGameProps> = ({ onScore, onGameOver }) => {
            </div>
        )}
 
-       {/* Environment */}
-       <div className="absolute bottom-0 left-0 w-48 h-32 bg-yellow-600/20 rounded-tr-full z-0"></div>
-       <div className="absolute bottom-0 left-0 w-32 h-24 bg-yellow-600 rounded-tr-full z-0 border-t-4 border-yellow-700 shadow-inner"></div>
+       {/* Environment (Ground Piles) */}
+       <div className="absolute bottom-0 left-0 w-48 h-32 bg-yellow-600/40 rounded-tr-full z-0 backdrop-blur-sm border-t-2 border-yellow-500/50"></div>
+       <div className="absolute bottom-0 left-0 w-32 h-24 bg-yellow-600/60 rounded-tr-full z-0 border-t-4 border-yellow-700/50 shadow-inner backdrop-blur-sm"></div>
        
        {/* Enemies */}
        {enemies.map(e => (
-           <div key={e.id} className="absolute transition-none z-10 text-slate-700" style={{ left: e.x, top: e.y, transform: `scaleX(${e.dir * -1})` }}>
+           <div key={e.id} className="absolute transition-none z-10 text-white drop-shadow-lg" style={{ left: e.x, top: e.y, transform: `scaleX(${e.dir * -1})` }}>
                <Bird className="animate-bounce" size={24} />
            </div>
        ))}
