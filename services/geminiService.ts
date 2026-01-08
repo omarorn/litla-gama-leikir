@@ -90,13 +90,13 @@ export const generateGameImage = async (prompt: string, size: "1K" | "2K" | "4K"
   }
 };
 
-// 3. TRASH SCANNER (Vision - Gemini 3 Flash)
+// 3. TRASH SCANNER (Vision - Gemini 3 Pro)
 export const identifyTrashItem = async (base64Image: string): Promise<{ item: string, bin: string, reason: string }> => {
   if (!apiKey) return { item: "Óþekkt", bin: "Almennt", reason: "Engin tenging." };
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3-pro-preview", 
       contents: {
         parts: [
           { inlineData: { mimeType: "image/jpeg", data: base64Image } },

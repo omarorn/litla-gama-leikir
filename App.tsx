@@ -12,6 +12,7 @@ import MapOps from './components/MapOps';
 import AIAssistant from './components/AIAssistant';
 import HighScoreCamera from './components/HighScoreCamera';
 import GameWheel from './components/GameWheel';
+import LeaderboardBackground from './components/LeaderboardBackground';
 import { Play, ArrowLeft, Grip, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { audio } from './services/audioService';
 
@@ -114,7 +115,13 @@ export default function App() {
   const borderColor = isWinter ? 'border-cyan-500' : 'border-yellow-500';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center font-sans overflow-x-hidden relative">
+      
+      {/* Background High Score Board - Visible when idle */}
+      {gameState === 'idle' && (
+          <LeaderboardBackground userHighScores={highScores} />
+      )}
+
       <header className={`w-full bg-slate-950/80 border-b ${borderColor} p-4 sticky top-0 z-20 backdrop-blur-md`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -167,7 +174,7 @@ export default function App() {
                      <GameWheel onGameSelected={startGame} isWinter={isWinter} />
                  </div>
 
-                 <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-widest">Veldu verkefni dagsins</h2>
+                 <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-widest drop-shadow-lg text-white">Veldu verkefni dagsins</h2>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl">
                      {GAME_LIST.map((game) => (
                          <button 
@@ -184,7 +191,7 @@ export default function App() {
         ) : (
           <div className="w-full max-w-4xl animate-scale-in">
                 <div className="mb-4 flex justify-between items-center">
-                    <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs">
+                    <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs bg-slate-900/50 px-3 py-1 rounded-full">
                         <ArrowLeft size={16} /> Til baka í valmynd
                     </button>
                     {/* Mobile Score */}
