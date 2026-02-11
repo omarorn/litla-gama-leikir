@@ -31,7 +31,7 @@ interface FeedbackItem {
   x: number;
   y: number;
   image: string;
-  type: 'correct' | 'incorrect' | 'powerup';
+  type: 'correct' | 'incorrect' | 'powerup' | 'broken';
 }
 
 interface Mistake {
@@ -194,18 +194,21 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
              const isCorrect = isPowerup || item.type === activeBin;
              
              // VISUAL FEEDBACK SPAWN
+             // If wrong and NOT powerup, use 'broken' visual
+             const feedbackType = isPowerup ? 'powerup' : (isCorrect ? 'correct' : 'broken');
+
              setFeedbackItems(prev => [...prev, {
                  id: feedbackId,
                  x: item.x,
                  y: item.y,
                  image: item.image,
-                 type: isPowerup ? 'powerup' : (isCorrect ? 'correct' : 'incorrect')
+                 type: feedbackType
              }]);
              
              // Remove feedback after animation
              setTimeout(() => {
                  setFeedbackItems(prev => prev.filter(i => i.id !== feedbackId));
-             }, 500);
+             }, 800); // Slightly longer for break animation
 
              if (isCorrect) {
                // SUCCESS
@@ -228,7 +231,10 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
                onScore(scoreRef.current);
                setMistakes(m => [...m, { item: item.name, wrongBin: activeBin, correctBin: item.type }]);
                setCombo(0);
-               audio.playTrashWrong();
+               
+               // Play BREAK sound if it's trash, or regular wrong sound if something else
+               if (!isPowerup) audio.playTrashBreak();
+               else audio.playTrashWrong();
              }
              return false; 
            }
@@ -351,6 +357,22 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
         .animate-pop {
           animation: pop-fade 0.5s ease-out forwards;
         }
+        
+        /* BREAK ANIMATIONS */
+        @keyframes break-left {
+            0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-30px, 30px) rotate(-45deg); opacity: 0; }
+        }
+        @keyframes break-right {
+            0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(30px, 30px) rotate(45deg); opacity: 0; }
+        }
+        .animate-break-left {
+            animation: break-left 0.6s ease-out forwards;
+        }
+        .animate-break-right {
+            animation: break-right 0.6s ease-out forwards;
+        }
       `}</style>
       
       {/* HUD */}
@@ -467,6 +489,22 @@ const GarbageGame: React.FC<GarbageGameProps> = ({ onScore, onGameOver }) => {
           {item.type === 'powerup' ? (
                <div className="text-4xl font-black text-yellow-400 animate-pop drop-shadow-[0_4px_0_rgba(0,0,0,1)] stroke-black">
                   +50
+               </div>
+          ) : item.type === 'broken' ? (
+               // BROKEN EFFECT
+               <div className="relative w-16 h-16">
+                  {/* Left Half - Clipped */}
+                  <div className="absolute inset-0 animate-break-left" style={{ clipPath: 'polygon(0 0, 60% 0, 40% 100%, 0 100%)' }}>
+                       <div className="w-full h-full bg-white/50 rounded-md backdrop-blur-sm p-1">
+                           <img src={item.image} className="w-full h-full object-contain grayscale" />
+                       </div>
+                  </div>
+                   {/* Right Half - Clipped */}
+                  <div className="absolute inset-0 animate-break-right" style={{ clipPath: 'polygon(60% 0, 100% 0, 100% 100%, 40% 100%)' }}>
+                       <div className="w-full h-full bg-white/50 rounded-md backdrop-blur-sm p-1">
+                           <img src={item.image} className="w-full h-full object-contain grayscale" />
+                       </div>
+                  </div>
                </div>
           ) : (
               <>

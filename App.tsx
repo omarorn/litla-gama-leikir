@@ -12,6 +12,7 @@ import MapOps from './components/MapOps';
 import AIAssistant from './components/AIAssistant';
 import HighScoreCamera from './components/HighScoreCamera';
 import GameWheel from './components/GameWheel';
+import LeaderboardBackground from './components/LeaderboardBackground';
 import { Play, ArrowLeft, Grip, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { audio } from './services/audioService';
 
@@ -114,7 +115,13 @@ export default function App() {
   const borderColor = isWinter ? 'border-cyan-500' : 'border-yellow-500';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center font-sans overflow-x-hidden relative">
+      
+      {/* Background High Score Board - Visible when idle */}
+      {gameState === 'idle' && (
+          <LeaderboardBackground userHighScores={highScores} />
+      )}
+
       <header className={`w-full bg-slate-950/80 border-b ${borderColor} p-4 sticky top-0 z-20 backdrop-blur-md`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -167,7 +174,7 @@ export default function App() {
                      <GameWheel onGameSelected={startGame} isWinter={isWinter} />
                  </div>
 
-                 <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-widest">Veldu verkefni dagsins</h2>
+                 <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-widest drop-shadow-lg text-white">Veldu verkefni dagsins</h2>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl">
                      {GAME_LIST.map((game) => (
                          <button 
@@ -184,7 +191,7 @@ export default function App() {
         ) : (
           <div className="w-full max-w-4xl animate-scale-in">
                 <div className="mb-4 flex justify-between items-center">
-                    <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs">
+                    <button onClick={handleBackToMenu} className="flex items-center gap-2 text-slate-400 hover:text-white uppercase font-bold text-xs bg-slate-900/50 px-3 py-1 rounded-full">
                         <ArrowLeft size={16} /> Til baka í valmynd
                     </button>
                     {/* Mobile Score */}
@@ -201,4 +208,33 @@ export default function App() {
                 {activeGame === GameType.SAND && <SandGame onScore={setScore} onGameOver={handleGameOver} />}
                 {activeGame === GameType.SCANNER && <TrashScanner onBack={handleBackToMenu} isWinter={isWinter} />}
                 {activeGame === GameType.GEAR && <GearStation onBack={handleBackToMenu} />}
-                {activeGame === GameType.MAPS && <MapOps onBack={
+                {activeGame === GameType.MAPS && <MapOps onBack={handleBackToMenu} />}
+                {activeGame === ExtendedGameType.ASSISTANT && <AIAssistant onBack={handleBackToMenu} />}
+
+             {gameState === 'highscore' && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md z-50 rounded-xl">
+                     <HighScoreCamera onComplete={handleHighScoreComplete} score={score} />
+                 </div>
+             )}
+
+             {gameState === 'gameover' && !['SCANNER', 'GEAR', 'MAPS', 'ASSISTANT'].includes(activeGame as string) && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 rounded-xl">
+                     <div className={`bg-slate-900 border-2 ${borderColor} p-10 rounded-2xl text-center shadow-2xl`}>
+                        <h2 className="text-4xl font-black text-white uppercase mb-4">Verki lokið</h2>
+                        <div className={`${accentColor} font-mono text-4xl font-bold mb-8`}>{score} STIG</div>
+                        <div className="flex gap-4">
+                            <button onClick={() => startGame(activeGame)} className="bg-yellow-500 text-black px-8 py-4 rounded-xl font-bold flex items-center gap-2">
+                                <Play size={20} fill="black" /> Reyna aftur
+                            </button>
+                            <button onClick={handleBackToMenu} className="bg-slate-700 text-white px-8 py-4 rounded-xl font-bold">Loka</button>
+                        </div>
+                     </div>
+                 </div>
+             )}
+          </div>
+        )}
+      </main>
+      <Foreman gameType={activeGame as GameType} score={score} gameState={gameState} />
+    </div>
+  );
+}

@@ -85,7 +85,7 @@ const TrashScanner: React.FC<TrashScannerProps> = ({ isWinter }) => {
                     AI Flokkunarvél <span className={`text-base align-top ${accentColor}`}>v3.0 PRO</span>
                 </h2>
                 <p className="text-slate-400 text-lg max-w-md mx-auto">
-                    Notaðu Gemini 3 Flash Vision til að greina hvers kyns úrgang með nákvæmni.
+                    Notaðu Gemini 3 Pro Vision til að greina hvers kyns úrgang með nákvæmni.
                 </p>
             </div>
         )}
